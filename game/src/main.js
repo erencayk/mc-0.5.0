@@ -1,5 +1,5 @@
 // App shell: boot, menus, sessions (single player / LAN host / LAN client), main loop.
-import { buildAtlas } from './textures.js';
+import { buildAtlas, tileCount } from './textures.js';
 import * as assets050 from './assets050.js';
 import { clearIconCache } from './icons.js';
 import { World, WX, WZ, WY } from './world.js';
@@ -563,6 +563,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 window.addEventListener('error', (e) => { console.error('ERR', e.message, e.filename, e.lineno); });
 const app = new App();
 window.__app = app;
+window.__tileCount = tileCount;
+window.__createEntity = createEntity;
 window.__recipes = recipes;
 window.__classes = { Pig: MOB_CLASSES.pig };
 window.__allMobs = MOB_CLASSES;

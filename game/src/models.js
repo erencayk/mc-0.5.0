@@ -1,5 +1,6 @@
 // Low-poly box models for players and mobs (original designs), plus item/block rendering helpers.
-import { tileUV, tex, PAINTINGS } from './textures.js';
+import { tileUV, tex, PAINTINGS, look050, skinOrigin, ATLAS_SIZE } from './textures.js';
+import { MODELS_050 } from './pe050data.js';
 import { blocks, R } from './blocks.js';
 import { itemIconTile, isBlockItem, blockIconIsFlat } from './items.js';
 
@@ -219,8 +220,128 @@ MODELS.chicken = (mesh, m, e, sky, blk) => {
   face(mesh, h, -2, 4, -3, 1, 1, [20, 20, 20], sky, blk); face(mesh, h, 1, 4, -3, 1, 1, [20, 20, 20], sky, blk);
 };
 
+// ---------------------------------------------------------------- original 0.5.0 models
+// Geometry measured from the original model constructors (MODELS_050); textured with the skins
+// from the player's own imported APK. Model space: 1 unit = 1/16 block, y down, origin 24 units up.
+const SKIN_OF = { player: 'mob/char', zombie: 'mob/zombie', pigzombie: 'mob/pigzombie', skeleton: 'mob/skeleton', creeper: 'mob/creeper', spider: 'mob/spider', pig: 'mob/pig', cow: 'mob/cow', sheep: 'mob/sheep', chicken: 'mob/chicken' };
+const GEO_OF = { player: 'humanoid', zombie: 'humanoid', pigzombie: 'humanoid', skeleton: 'skeleton', creeper: 'creeper', spider: 'spider', pig: 'pig', cow: 'cow', sheep: 'sheep', chicken: 'chicken' };
+
+function shadeOf(n) {
+  const l = Math.hypot(n[0], n[1], n[2]) || 1, x = Math.abs(n[0] / l), y = n[1] / l, z = Math.abs(n[2] / l);
+  return y > 0.7 ? 1 : y < -0.7 ? 0.5 : (z >= x ? 0.8 : 0.6);
+}
+function drawCube(mesh, m, c, so, sky, blk, col) {
+  const [u, v, x, y, z, w, h, d, g, mir] = c;
+  let x0 = x - g, x1 = x + w + g;
+  const y0 = y - g, y1 = y + h + g, z0 = z - g, z1 = z + d + g;
+  if (mir) { const t = x0; x0 = x1; x1 = t; }
+  const P = [[x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [x0, y0, z0]].map((p) => T3.ap(m, p[0], p[1], p[2]));
+  const ctr = T3.ap(m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  const Q = [
+    [[4, 0, 1, 5], u + d + w, v + d, u + d + w + d, v + d + h],
+    [[7, 3, 6, 2], u, v + d, u + d, v + d + h],
+    [[4, 3, 7, 0], u + d, v, u + d + w, v + d],
+    [[1, 2, 6, 5], u + d + w, v, u + d + w + w, v + d],
+    [[0, 7, 2, 1], u + d, v + d, u + d + w, v + d + h],
+    [[3, 4, 5, 6], u + d + w + d, v + d, u + d + w + d + w, v + d + h]
+  ];
+  const k = 1 / ATLAS_SIZE;
+  for (const [vi, ua, va, ub, vb] of Q) {
+    const q = vi.map((i) => P[i]);
+    const fc = [(q[0][0] + q[2][0]) / 2 - ctr[0], (q[0][1] + q[2][1]) / 2 - ctr[1], (q[0][2] + q[2][2]) / 2 - ctr[2]];
+    const sh = shadeOf(fc);
+    const U1 = (so[0] + ua + 0.02) * k, V1 = (so[1] + va + 0.02) * k, U2 = (so[0] + ub - 0.02) * k, V2 = (so[1] + vb - 0.02) * k;
+    const uv = [[U2, V1], [U1, V1], [U1, V2], [U2, V2]];
+    for (let i = 0; i < 4; i++) mesh.vert(q[i][0], q[i][1], q[i][2], uv[i][0], uv[i][1], sky, blk, sh, col[0], col[1], col[2], col[3] === undefined ? 255 : col[3]);
+  }
+}
+function drawParts(mesh, base, parts, rots, so, sky, blk, col) {
+  parts.forEach((p, i) => {
+    const r = rots[i] || p;
+    let m = T3.t(base, p[0], p[1], p[2]);
+    if (r[5]) m = T3.rz(m, r[5]);
+    if (r[4]) m = T3.ry(m, r[4]);
+    if (r[3]) m = T3.rx(m, r[3]);
+    for (const c of p[6]) drawCube(mesh, m, c, so, sky, blk, col);
+  });
+}
+// setupAnim of the original models (walk cycle, head look, idle arm sway)
+function poseOf(geo, parts, e) {
+  const t = (e.walkAnim || 0), r = Math.min(1, e.walkAmt || 0), bob = (e.age || 0) + (e.tickDelta || 0);
+  const hx = -(e.pitch || 0);
+  const rot = parts.map((p) => [0, 0, 0, p[3], p[4], p[5]]);
+  const cos = Math.cos, sin = Math.sin, PI = Math.PI;
+  if (geo === 'pig' || geo === 'cow' || geo === 'sheep' || geo === 'sheep_fur') {
+    rot[0][3] = hx;
+    rot[2][3] += cos(t * 0.6662) * 1.4 * r; rot[3][3] += cos(t * 0.6662 + PI) * 1.4 * r;
+    rot[4][3] += cos(t * 0.6662 + PI) * 1.4 * r; rot[5][3] += cos(t * 0.6662) * 1.4 * r;
+  } else if (geo === 'chicken') {
+    rot[0][3] = hx; rot[6][3] = hx; rot[7][3] = hx;
+    rot[2][3] += cos(t * 0.6662) * 1.4 * r; rot[3][3] += cos(t * 0.6662 + PI) * 1.4 * r;
+    const flap = e.onGround ? 0 : (sin(bob * 0.9) + 1) * 0.8;
+    rot[4][5] = flap; rot[5][5] = -flap;
+  } else if (geo === 'humanoid' || geo === 'skeleton') {
+    rot[0][3] = hx;
+    const forward = e.type === 'zombie' || e.type === 'skeleton';
+    rot[2][3] = cos(t * 0.6662 + PI) * 2 * r * 0.5; rot[3][3] = cos(t * 0.6662) * 2 * r * 0.5;
+    rot[4][3] = cos(t * 0.6662) * 1.4 * r; rot[5][3] = cos(t * 0.6662 + PI) * 1.4 * r;
+    if (e.held && e.held.id) rot[2][3] = rot[2][3] * 0.5 - PI / 10;
+    if (e.swing) rot[2][3] -= sin(e.swing * PI) * 1.2;
+    if (forward) {
+      const a = sin((e.swing || 0) * PI);
+      rot[2][3] = -PI / 2 + a * 0.4; rot[3][3] = -PI / 2 + a * 0.4;
+      rot[2][4] = -0.1; rot[3][4] = 0.1;
+    }
+    rot[2][5] = cos(bob * 0.09) * 0.05 + 0.05; rot[3][5] = -(cos(bob * 0.09) * 0.05 + 0.05);
+    rot[2][3] += sin(bob * 0.067) * 0.05; rot[3][3] -= sin(bob * 0.067) * 0.05;
+  } else if (geo === 'creeper') {
+    rot[0][3] = hx;
+    rot[2][3] = cos(t * 0.6662) * 1.4 * r; rot[3][3] = cos(t * 0.6662 + PI) * 1.4 * r;
+    rot[4][3] = cos(t * 0.6662 + PI) * 1.4 * r; rot[5][3] = cos(t * 0.6662) * 1.4 * r;
+  } else if (geo === 'spider') {
+    rot[0][3] = hx;
+    const q = 0.6662 * 2;
+    const c = [0, PI, PI / 2, PI * 1.5].map((o) => -(cos(t * q + o) * 0.4) * r);
+    const s = [0, PI, PI / 2, PI * 1.5].map((o) => Math.abs(sin(t * 0.6662 + o) * 0.4) * r);
+    for (let i = 0; i < 4; i++) {
+      rot[3 + i * 2][4] += c[i]; rot[4 + i * 2][4] -= c[i];
+      rot[3 + i * 2][5] += s[i]; rot[4 + i * 2][5] -= s[i];
+    }
+  }
+  return rot;
+}
+function drawMob050(mesh, m, e, sky, blk) {
+  const geo = GEO_OF[e.type], so = skinOrigin(SKIN_OF[e.type]);
+  const parts = MODELS_050[geo];
+  let base = T3.t(m, 0, 24 / 16 + 0.0078125, 0);
+  base = T3.s(base, -1 / 16, -1 / 16, 1 / 16);
+  const white = [255, 255, 255];
+  drawParts(mesh, base, parts, poseOf(geo, parts, e), so, sky, blk, white);
+  if (e.type === 'sheep' && !e.sheared) {
+    const fur = skinOrigin('mob/sheep_fur');
+    if (fur) drawParts(mesh, base, MODELS_050.sheep_fur, poseOf('sheep_fur', MODELS_050.sheep_fur, e), fur, sky, blk, e.woolColorRGB || white);
+  }
+  const held = e.type === 'skeleton' ? { id: 261 } : (typeof e.held === 'function' ? e.held() : e.held);
+  if (held && held.id && (geo === 'humanoid' || geo === 'skeleton')) {
+    // item in the right hand (model space: arm pivot, then down the arm)
+    const arm = poseOf(geo, parts, e)[2];
+    let t = T3.t(base, parts[2][0], parts[2][1], parts[2][2]);
+    t = T3.rz(t, arm[5]); t = T3.ry(t, arm[4]); t = T3.rx(t, arm[3]);
+    t = T3.t(t, -1, 10, -1);
+    t = T3.s(t, -16, -16, 16); // back to block units, y towards the shoulder
+    // icon plane along the arm's forward axis, blade pointing forward-up, handle in the hand
+    t = mm(t, [0, 0, 0.62, 0, 0, 0.62, 0, 0, -0.62, 0, 0, 0]);
+    t = T3.t(t, -0.2, -0.2, -0.5);
+    drawItem(mesh, t, held.id, held.meta || 0, sky, blk, true);
+  }
+  if (e.type === 'creeper' && e.fuse && Math.floor(e.fuse / 4) % 2) {
+    drawBox(mesh, m, -4.3 * px, 0, -4.3 * px, 4.3 * px, 26.3 * px, 4.3 * px, [255, 255, 255], 15, 15, 120);
+  }
+}
+
 export function drawMob(mesh, e, sky, blk) {
-  const fn = MODELS[e.type];
+  let fn = MODELS[e.type];
+  if (look050 && GEO_OF[e.type] && skinOrigin(SKIN_OF[e.type])) fn = drawMob050;
   if (!fn) return;
   let m = T3.t(T3.id(), e.rx, e.ry, e.rz);
   m = T3.ry(m, -e.ryaw);

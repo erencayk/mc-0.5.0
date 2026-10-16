@@ -93,6 +93,7 @@ export function tex(name) {
   return i;
 }
 export function hasTex(name) { return tileIndex.has(name); }
+export function tileCount() { return tileList.length; }
 
 // ---------------------------------------------------------------- materials
 const STONE = [125, 125, 125];
@@ -601,6 +602,12 @@ function lowSaturation(d) {
   return n > 0 && sat / n < 0.15;
 }
 
+// mob skins (64x32 each) go to atlas rows 10-13
+export const SKINS_050 = ['mob/char', 'mob/chicken', 'mob/cow', 'mob/creeper', 'mob/pig', 'mob/pigzombie', 'mob/sheep', 'mob/sheep_fur', 'mob/skeleton', 'mob/spider', 'mob/zombie'];
+const skinPixel = (i) => [(i % 8) * 64, (10 + Math.floor(i / 8) * 2) * TILE];
+const skinAt = new Map();
+export function skinOrigin(name) { return skinAt.get(name) || null; }
+
 export function buildAtlas() {
   const c = document.createElement('canvas');
   c.width = c.height = ATLAS_SIZE;
@@ -612,12 +619,20 @@ export function buildAtlas() {
     img.data.set(p.d);
     ctx.putImageData(img, (i % ATLAS_TILES) * TILE, Math.floor(i / ATLAS_TILES) * TILE);
   });
-  if (tileList.length > ATLAS_TILES * 16 - FOLIAGE_050.length) throw new Error('atlas overflow');
+  if (tileList.length > ATLAS_TILES * 10) throw new Error('atlas overflow');
   tintSlots.clear();
+  skinAt.clear();
   look050 = assets050.active();
   if (look050) {
     drawSheet(ctx, assets050.images.terrain, 0);
     drawSheet(ctx, assets050.images['gui/items'], 16);
+    SKINS_050.forEach((name, i) => {
+      const im = assets050.images[name];
+      if (!im) return;
+      const [sx, sy] = skinPixel(i);
+      ctx.drawImage(im, 0, 0, im.width, im.height, sx, sy, 64, 32);
+      skinAt.set(name, [sx, sy]);
+    });
     let slot = ATLAS_TILES * 16 - FOLIAGE_050.length;
     for (const [k, rgb] of FOLIAGE_050) {
       const t = terrainTile(k), sx = (t % ATLAS_TILES) * TILE, sy = Math.floor(t / ATLAS_TILES) * TILE;
