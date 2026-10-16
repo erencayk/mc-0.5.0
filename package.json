@@ -1,0 +1,18 @@
+{
+  "name": "pocketcraft-050",
+  "version": "0.5.0",
+  "private": true,
+  "description": "Clean-room recreation of the Pocket Edition 0.5.0 alpha gameplay for iOS + Android with LAN multiplayer",
+  "scripts": {
+    "build": "esbuild game/src/main.js --bundle --format=iife --target=es2019 --minify --sourcemap=inline --outfile=www/game.js",
+    "build:dev": "esbuild game/src/main.js --bundle --format=iife --target=es2019 --outfile=www/game.js",
+    "relay": "node tools/devserver.js"
+  },
+  "dependencies": {
+    "fflate": "0.8.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.23.1",
+    "ws": "8.18.0"
+  }
+}

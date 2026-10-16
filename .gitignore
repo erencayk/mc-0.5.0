@@ -1,0 +1,9 @@
+node_modules/
+build/
+*.keystore
+*.jks
+.DS_Store
+android/build/
+ios/build/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
