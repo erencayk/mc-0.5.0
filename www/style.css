@@ -125,8 +125,8 @@ label { display: block; margin: 10px 0; font-size: 14px; color: var(--dim); }
 .msg { background: rgba(0, 0, 0, .45); padding: 3px 8px; font-size: 14px; text-shadow: 2px 2px 0 #3f3f3f; transition: opacity 1.4s; }
 .msg.fade { opacity: 0; }
 .hbtn { position: absolute; top: calc(8px + var(--safe-t)); width: 44px; height: 44px; padding: 0; min-height: 0; font-size: 16px; opacity: .85; }
-.hbtn.pause { left: 50%; transform: translateX(-50%); }
-.hbtn.chatb { left: calc(50% + 32px); display: none; }
+.hbtn.pause { left: calc(50% - 50px); }
+.hbtn.chatb { left: calc(50% + 30px); }
 .lanbadge { position: absolute; right: calc(8px + var(--safe-r)); top: calc(12px + var(--safe-t)); font-size: 12px; background: rgba(0, 0, 0, .45); padding: 4px 8px; color: #aef; }
 .cross { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; }
 .cross::before, .cross::after { content: ''; position: absolute; background: rgba(255, 255, 255, .85); mix-blend-mode: difference; }
@@ -168,7 +168,6 @@ label { display: block; margin: 10px 0; font-size: 14px; color: var(--dim); }
 .flydown::after { border: 10px solid transparent; border-top: 14px solid rgba(255, 255, 255, .85); margin-top: 6px; }
 .hud.under .bottom, .hud.under .dpad, .hud.under .sneak, .hud.under .flybtns, .hud.under .hbtn { visibility: hidden; }
 .hud.notouch .dpad, .hud.notouch .sneak, .hud.notouch .flybtns { display: none; }
-.hud.notouch .hbtn.chatb { display: block; }
 
 @media (max-height: 420px) {
   .screen h1 { font-size: 18px; margin: 2px 0 8px; }

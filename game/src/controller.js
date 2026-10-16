@@ -7,6 +7,7 @@ import { tex, tileUV } from './textures.js';
 import * as audio from './audio.js';
 
 const REACH_S = 5, REACH_C = 6;
+const INTERACTIVE = new Set([B.WOOD_DOOR, B.TRAPDOOR, B.FENCE_GATE, B.CHEST, B.FURNACE, B.LIT_FURNACE, B.WORKBENCH, B.BED, B.REACTOR, B.TNT]);
 
 export function breakTicks(id, held) {
   const b = blocks[id];
@@ -177,6 +178,12 @@ export class Controller {
     const held = p.held();
     if (hit && hit.ent) {
       if (fromTap || hit.ent.type === 'sheep') { this.attackEntity(hit.ent); return; }
+    }
+    const it = held ? getItem(held.id) : null;
+    if (hit && hit.block && it && it.food) {
+      // tapping with food eats it unless the block itself does something
+      const bid = this.world.getBlock(hit.block.x, hit.block.y, hit.block.z);
+      if (!INTERACTIVE.has(bid)) { this.app.command({ c: 'useItem' }); this.swing = 1; return; }
     }
     if (hit && hit.block) {
       const b = hit.block;

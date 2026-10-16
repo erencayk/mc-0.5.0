@@ -260,7 +260,7 @@ export class UI {
     const render = () => {
       const l = $('.glist', s);
       if (!games.size) { l.innerHTML = '<p class="dim scanning">Scanning for games…</p>'; return; }
-      l.innerHTML = [...games.values()].map((g) => `<div class="wrow" data-act="game" data-host="${esc(g.host)}" data-port="${g.port}"><div><b>${esc(g.info.w || g.name)}</b><small>Host: ${esc(g.info.h || '?')} · ${esc(g.host)}</small></div><span class="go">▶</span></div>`).join('');
+      l.innerHTML = [...games.values()].map((g) => `<div class="wrow" data-act="game" data-host="${esc(g.host)}" data-port="${g.port}"><div><b>${esc(g.info.w || g.name)}</b><small>Host: ${esc(g.info.h || '?')}${g.host.startsWith('svc:') ? '' : ' · ' + esc(g.host)}</small></div><span class="go">▶</span></div>`).join('');
     };
     const stop = this.app.discover((g) => { games.set(g.name, g); render(); }, (name) => { games.delete(name); render(); });
     this.app.localIp().then((ip) => { const e = $('.myip', s); if (e) e.textContent = 'Your IP: ' + ip; });

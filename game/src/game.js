@@ -1099,6 +1099,8 @@ export class Game {
       this.syncInv(p);
     }
     this.broadcastMsg(`${p.name} died`);
+    if (p.sink) p.sink.hp();
+    this.dirtyEntity(p);
   }
   // server-side per-player logic (env damage + pickup)
   tickPlayer(p) {

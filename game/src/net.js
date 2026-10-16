@@ -44,7 +44,10 @@ export class Server {
     if (this.open) return;
     this.open = true;
     this.t.host(PORT);
-    this.t.advertise(this.worldName + ' (' + this.hostName + ')', PORT, { w: this.worldName, h: this.hostName, v: PROTO, m: this.game.world.mode });
+    // DNS-SD instance names are limited to 63 UTF-8 bytes
+    let label = (this.worldName + ' (' + this.hostName + ')').replace(/[.\\]/g, ' ');
+    while (new TextEncoder().encode(label).length > 60) label = label.slice(0, -1);
+    this.t.advertise(label, PORT, { w: this.worldName, h: this.hostName, v: PROTO, m: this.game.world.mode });
   }
   stop() {
     if (!this.open) return;
