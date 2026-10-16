@@ -1,6 +1,6 @@
 // Client-side visuals: particles and the per-frame dynamic geometry (entities, items, overlays).
 import { blocks, R, B } from './blocks.js';
-import { tex, tileUV } from './textures.js';
+import { tex, tileUV, look050, terrainTile } from './textures.js';
 import { drawMob, drawItem, drawBox, drawPainting, T3 } from './models.js';
 import { isBlockItem, blockIconIsFlat } from './items.js';
 
@@ -166,7 +166,7 @@ export function buildOverlay(mesh, ctrl) {
   const br = ctrl.breaking;
   if (!br || br.progress <= 0) return;
   const stage = Math.min(9, Math.floor(br.progress * 10));
-  const tile = tex('destroy_' + stage);
+  const tile = look050 ? terrainTile(240 + stage) : tex('destroy_' + stage);
   const e = 0.003;
   const sb = ctrl.target && ctrl.target.x === br.x && ctrl.target.y === br.y && ctrl.target.z === br.z ? ctrl.target.box : [0, 0, 0, 1, 1, 1];
   const m = T3.t(T3.id(), br.x, br.y, br.z);

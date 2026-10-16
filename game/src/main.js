@@ -1,5 +1,7 @@
 // App shell: boot, menus, sessions (single player / LAN host / LAN client), main loop.
 import { buildAtlas } from './textures.js';
+import * as assets050 from './assets050.js';
+import { clearIconCache } from './icons.js';
 import { World, WX, WZ, WY } from './world.js';
 import { generate, generateFlat } from './worldgen.js';
 import { Renderer } from './renderer.js';
@@ -33,6 +35,7 @@ class App {
       try { const s = await request('fsRead', { path: 'settings.json' }); if (s) Object.assign(this.settings, JSON.parse(s)); } catch (e) { }
     }
     if (!this.settings.name) this.settings.name = 'Steve' + Math.floor(Math.random() * 900 + 100);
+    await assets050.loadStored();
     buildAtlas();
     this.ui = new UI(this);
     this.ctrl = new Controller(this);
@@ -47,6 +50,25 @@ class App {
     window.addEventListener('resize', () => this.renderer && this.renderer.resize());
     // iOS only unlocks WebAudio from touchend/click user gestures
     for (const ev of ['touchend', 'click', 'keydown']) document.addEventListener(ev, () => audio.unlockAudio(), { passive: true });
+  }
+
+  // ------------------------------------------------------------------ original look (player's own APK)
+  async importOriginalApk() {
+    const buf = await assets050.pickFile();
+    const n = await assets050.importApk(buf);
+    this.refreshLook();
+    return n;
+  }
+  async removeOriginalLook() {
+    await assets050.forget();
+    this.refreshLook();
+  }
+  refreshLook() {
+    buildAtlas();
+    clearIconCache();
+    if (this.renderer) this.renderer.reloadAtlas();
+    if (this.ui.hud) this.ui.hud.querySelectorAll('.hslot').forEach((h) => { h._k = null; });
+    this.ui.refreshHotbar();
   }
 
   // ------------------------------------------------------------------ settings

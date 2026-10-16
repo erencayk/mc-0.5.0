@@ -1,7 +1,7 @@
 // Items, recipes and smelting.
 import { B, blocks, blockName } from './blocks.js';
-import { tex } from './textures.js';
-import { RECIPES_050, FURNACE_050, CREATIVE_050, ITEMS_050 } from './pe050data.js';
+import { tex, look050, itemTile } from './textures.js';
+import { RECIPES_050, FURNACE_050, CREATIVE_050, ITEMS_050, ITEM_ICON_050 } from './pe050data.js';
 
 export const I = {
   IRON_SHOVEL: 256, IRON_PICKAXE: 257, IRON_AXE: 258, FLINT_STEEL: 259, APPLE: 260, BOW: 261, ARROW: 262,
@@ -118,6 +118,10 @@ export function maxStack(id) {
   return it ? it.maxStack : 64;
 }
 export function itemIconTile(id, meta = 0) {
+  if (look050 && ITEM_ICON_050[id] !== undefined) {
+    const v = ITEM_ICON_050[id];
+    return itemTile(Array.isArray(v) ? (v[meta & 15] !== undefined ? v[meta & 15] : v[0]) : v);
+  }
   const it = items.get(id);
   if (!it) return 0;
   return tex(it.iconFn ? it.iconFn(meta) : it.icon);

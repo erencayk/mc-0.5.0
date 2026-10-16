@@ -4,6 +4,7 @@ import { blocks, R } from './blocks.js';
 import { isBlockItem, blockIconIsFlat, itemIconTile } from './items.js';
 
 const cache = new Map();
+export function clearIconCache() { cache.clear(); urlCache.clear(); }
 const SIZE = 48;
 
 function tileXY(t) { return [(t % ATLAS_TILES) * TILE, Math.floor(t / ATLAS_TILES) * TILE]; }

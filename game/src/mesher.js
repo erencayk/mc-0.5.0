@@ -1,8 +1,8 @@
 // Section mesher. Builds quad lists (4 verts each) for a 16^3 section.
 // Vertex: x,y,z,u,v (float32) + sky,blk,shade,_ (u8) + r,g,b,a tint (u8) = 28 bytes.
-import { blocks, R, B, OPAQUE, RENDER, LIQUID, FACE_DIRS, fenceConnections, doorState, paneBoxes } from './blocks.js';
+import { blocks, R, B, OPAQUE, RENDER, LIQUID, FACE_DIRS, fenceConnections, doorState, paneBoxes, STEM_CONNECTED_050 } from './blocks.js';
 import { WX, WY, WZ, idx } from './world.js';
-import { tileUV, tex } from './textures.js';
+import { tileUV, tex, look050 } from './textures.js';
 import { BIOME } from './worldgen.js';
 
 export const STRIDE = 28;
@@ -34,6 +34,7 @@ const opaqueBuf = new QuadBuf();
 const transBuf = new QuadBuf();
 
 function biomeTint(world, x, z, kind) {
+  if (look050) return [255, 255, 255]; // 0.5.0 has fixed foliage colours (baked into the atlas)
   const b = world.biomes ? world.biomes[(x << 8) | z] : BIOME.PLAINS;
   // multipliers relative to texture's base green
   switch (b) {
@@ -275,7 +276,7 @@ export function buildSection(world, sx, sy, sz) {
           break;
         }
         case R.STEM: {
-          const tile = (meta & 7) === 7 && hasFruitNeighbour(world, x, y, z, b.stem) ? tex('stem_connected') : b.texFn(0, meta);
+          const tile = (meta & 7) === 7 && hasFruitNeighbour(world, x, y, z, b.stem) ? (look050 ? STEM_CONNECTED_050() : tex('stem_connected')) : b.texFn(0, meta);
           crossQuads(buf, x, y, z, tile, WHITE, 1);
           break;
         }
@@ -392,10 +393,12 @@ export function buildSection(world, sx, sy, sz) {
     const tTop = tex(head ? 'bed_head_top' : 'bed_foot_top');
     const tSide = tex(head ? 'bed_side_head' : 'bed_side_foot');
     const tEnd = tex('bed_end'), tWood = tex('planks');
+    const orig = look050 ? blocks[B.BED] : null;
     // direction vector the bed points to (foot -> head)
     const dirFace = [3, 4, 2, 5][d]; // south, west, north, east
     const backFace = [2, 5, 3, 4][d];
     box(buf, x, y, z, [0, 3 / 16, 0, 1, 9 / 16, 1], (f) => {
+      if (orig) return f === (head ? backFace : dirFace) ? -1 : orig.texFn(f, meta);
       if (f === 1) return tTop;
       if (f === 0) return tWood;
       if (f === dirFace) return head ? tEnd : -1;
@@ -404,7 +407,7 @@ export function buildSection(world, sx, sy, sz) {
     }, WHITE, false, true);
     // legs
     const legs = [[0, 0], [13 / 16, 0], [0, 13 / 16], [13 / 16, 13 / 16]];
-    for (const [lx, lz] of legs) box(buf, x, y, z, [lx, 0, lz, lx + 3 / 16, 3 / 16, lz + 3 / 16], () => tWood, WHITE, false, true);
+    for (const [lx, lz] of legs) box(buf, x, y, z, [lx, 0, lz, lx + 3 / 16, 3 / 16, lz + 3 / 16], () => (orig ? orig.texFn(0, meta) : tWood), WHITE, false, true);
   }
 
   return { any, opaque: opaqueBuf.n ? opaqueBuf.slice() : null, trans: transBuf.n ? transBuf.slice() : null, nOpaque: opaqueBuf.n, nTrans: transBuf.n };

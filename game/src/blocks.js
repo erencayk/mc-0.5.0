@@ -1,7 +1,7 @@
 // Block registry. IDs follow the familiar numeric scheme so worlds are easy to reason about,
 // but every behaviour here is an independent implementation.
-import { tex } from './textures.js';
-import { TILES_050 } from './pe050data.js';
+import { tex, look050, terrainTile, tintedTerrain } from './textures.js';
+import { TILES_050, TERRAIN_IDX_050, TINT_050 } from './pe050data.js';
 
 export const B = {
   AIR: 0, STONE: 1, GRASS: 2, DIRT: 3, COBBLE: 4, PLANKS: 5, SAPLING: 6, BEDROCK: 7,
@@ -172,10 +172,45 @@ for (const [id, [hard]] of Object.entries(TILES_050)) {
   if (b && b.hardness >= 0 && hard >= 0 && !b.liquid) b.hardness = hard;
 }
 
+// Original look (only when the player imported their own 0.5.0 APK): the terrain.png slot each
+// face uses, following the table measured from the original getTexture(face, data).
+const SUBST_050 = { 104: 105, 109: 98, 128: 24 }; // blocks 0.5.0 lacks -> closest original tile set
+const T5 = terrainTile;
+function tex050(id, f, m, snowy, proc) {
+  switch (id) {
+    case B.GRASS:
+      if (f === 1) return tintedTerrain(0, TINT_050.grass);
+      if (f > 1 && snowy) return T5(68);
+      break;
+    case B.LEAVES: {
+      const d = m & 3;
+      return tintedTerrain(d === 1 ? 132 : 52, TINT_050.leaves[d] || TINT_050.leaves[0]);
+    }
+    case B.TALLGRASS: return tintedTerrain(m === 2 ? 56 : 39, TINT_050.tallgrass);
+    case B.CHEST: case B.FURNACE: case B.LIT_FURNACE: {
+      const e = TERRAIN_IDX_050[id][0];
+      if (f < 2) return T5(e[f]);
+      return T5(f === ((m & 7) || 3) ? (id === B.LIT_FURNACE ? 61 : e[3]) : e[2]);
+    }
+    case B.WOOD_DOOR: return T5((m & 8) ? 81 : 97);
+    case B.WHEAT: return T5(88 + Math.min(7, m & 7));
+    case B.SLAB: case B.DOUBLE_SLAB: if ((m & 7) === 5) return T5(54); m &= 7; break;
+    case B.PUMPKIN_STEM: case B.MELON_STEM: return T5(111);
+    case B.REACTOR: return T5([234, 233, 232][m] || 234);
+  }
+  const e = TERRAIN_IDX_050[SUBST_050[id] || id];
+  if (!e) return proc(f, m, snowy);
+  const v = e[m] !== undefined ? e[m] : e[0];
+  return T5(Array.isArray(v) ? v[f] : v);
+}
+export const STEM_CONNECTED_050 = () => T5(127);
+
 // resolve tex specs to functions
 for (const b of blocks) {
   if (!b) continue;
-  b.texFn = b.tex ? texFn(b.tex) : () => 0;
+  const proc = b.tex ? texFn(b.tex) : () => 0;
+  const id = b.id;
+  b.texFn = (f, m, snowy) => (look050 ? tex050(id, f, m | 0, snowy, proc) : proc(f, m, snowy));
   if (!b.drop) b.drop = dropSelf(b.id);
 }
 

@@ -2,6 +2,7 @@
 import { iconURL, tileURL } from './icons.js';
 import { itemName, recipes, canCraft, CREATIVE, getItem, smelting, fuelTime, maxStack } from './items.js';
 import * as audio from './audio.js';
+import * as assets050 from './assets050.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
@@ -287,6 +288,11 @@ export class UI {
           <button data-act="cross" id="ocross">Crosshair aiming: ${st.splitControls ? 'ON' : 'OFF'}</button>
           <button data-act="color" id="ocolor">Shirt color</button>
         </div>
+        <div class="toggles">
+          <button data-act="look" id="olook">${assets050.active() ? 'Original 0.5.0 look: ON' : 'Import 0.5.0 APK textures'}</button>
+          ${assets050.active() ? '<button data-act="unlook">Remove imported textures</button>' : ''}
+        </div>
+        <p class="hint" id="olookmsg">Uses textures from your own copy of the original 0.5.0 APK. Nothing is uploaded or shared.</p>
       </div>
       <div class="row"><button data-act="done">Done</button></div>`);
     const upd = () => { this.app.applySettings(); };
@@ -301,6 +307,16 @@ export class UI {
       inv: (b) => { st.invertY = !st.invertY; b.textContent = 'Invert Y: ' + (st.invertY ? 'ON' : 'OFF'); upd(); },
       cross: (b) => { st.splitControls = !st.splitControls; b.textContent = 'Crosshair aiming: ' + (st.splitControls ? 'ON' : 'OFF'); upd(); },
       color: (b) => { st.color = (st.color + 1) % 8; b.style.background = `rgb(${this.app.playerColor().join(',')})`; upd(); },
+      look: async (b) => {
+        const msg = $('#olookmsg');
+        try {
+          msg.textContent = 'Reading APK...';
+          const n = await this.app.importOriginalApk();
+          msg.textContent = 'Imported ' + n + ' textures.';
+          b.textContent = 'Original 0.5.0 look: ON';
+        } catch (e) { msg.textContent = 'Import failed: ' + e.message; }
+      },
+      unlook: async () => { await this.app.removeOriginalLook(); this.options(back); },
       done: () => { st.name = ($('#oname').value.trim() || st.name).slice(0, 16); this.app.saveSettings(); upd(); back(); }
     });
   }

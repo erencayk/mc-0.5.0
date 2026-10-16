@@ -10,5 +10,7 @@ public class Activity extends android.view.ContextThemeWrapper {
     public android.view.Window getWindow() { throw new RuntimeException("Stub!"); }
     public void setContentView(android.view.View view) { throw new RuntimeException("Stub!"); }
     public Object getSystemService(String name) { throw new RuntimeException("Stub!"); }
+    public void startActivityForResult(android.content.Intent intent, int requestCode) { throw new RuntimeException("Stub!"); }
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) { throw new RuntimeException("Stub!"); }
     public final void runOnUiThread(Runnable action) { throw new RuntimeException("Stub!"); }
 }

@@ -9,6 +9,9 @@ import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.content.Intent;
+import android.net.Uri;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 
 /**
@@ -23,6 +26,8 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private NetBridge bridge;
+    private static final int PICK_FILE = 50;
+    private ValueCallback<Uri[]> pendingPick;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +48,25 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setTextZoom(100);
         web.setWebViewClient(new WebViewClient());
-        web.setWebChromeClient(new WebChromeClient());
+        // <input type=file> (used to import the player's own 0.5.0 APK textures)
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> cb, FileChooserParams params) {
+                if (pendingPick != null) pendingPick.onReceiveValue(null);
+                pendingPick = cb;
+                Intent i = new Intent("android.intent.action.GET_CONTENT");
+                i.addCategory("android.intent.category.OPENABLE");
+                i.setType("*/*");
+                try {
+                    startActivityForResult(i, PICK_FILE);
+                } catch (RuntimeException e) {
+                    pendingPick = null;
+                    cb.onReceiveValue(null);
+                    return false;
+                }
+                return true;
+            }
+        });
         web.setBackgroundColor(0xff000000);
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
@@ -81,6 +104,16 @@ public class MainActivity extends Activity {
             web.onPause();
         }
         super.onPause();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == PICK_FILE && pendingPick != null) {
+            pendingPick.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            pendingPick = null;
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override

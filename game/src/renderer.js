@@ -138,6 +138,12 @@ export class Renderer {
       this.dirty.add(this.key(xx >> 4, yy >> 4, zz >> 4));
     }
   }
+  reloadAtlas() {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.atlas);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlasCanvas);
+    this.markAll();
+  }
   markAll() { for (let sx = 0; sx < WX / 16; sx++) for (let sy = 0; sy < WY / 16; sy++) for (let sz = 0; sz < WZ / 16; sz++) this.dirty.add(this.key(sx, sy, sz)); }
 
   // rebuild dirty sections, nearest first, within time budget (ms)
