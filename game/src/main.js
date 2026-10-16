@@ -45,6 +45,8 @@ class App {
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.autosave(); });
     window.addEventListener('pagehide', () => this.autosave());
     window.addEventListener('resize', () => this.renderer && this.renderer.resize());
+    // iOS only unlocks WebAudio from touchend/click user gestures
+    for (const ev of ['touchend', 'click', 'keydown']) document.addEventListener(ev, () => audio.unlockAudio(), { passive: true });
   }
 
   // ------------------------------------------------------------------ settings
@@ -536,4 +538,5 @@ const app = new App();
 window.__app = app;
 window.__recipes = recipes;
 window.__classes = { Pig: MOB_CLASSES.pig };
+window.__allMobs = MOB_CLASSES;
 app.boot();

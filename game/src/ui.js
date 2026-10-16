@@ -160,10 +160,11 @@ export class UI {
     s.dataset.name = name;
     this.root.appendChild(s);
     this.screen = s; this.screenName = name;
+    this.hud.classList.add('under');
     s.addEventListener('pointerdown', (e) => e.stopPropagation());
     return s;
   }
-  hide() { if (this.screen) { this.screen.remove(); this.screen = null; this.screenName = null; } }
+  hide() { if (this.screen) { this.screen.remove(); this.screen = null; this.screenName = null; } this.hud.classList.remove('under'); }
   isOpen() { return !!this.screen; }
 
   bind(s, handlers) {

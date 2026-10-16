@@ -140,7 +140,7 @@ label { display: block; margin: 10px 0; font-size: 14px; color: var(--dim); }
 .hearts img.shake { animation: shake .4s infinite; }
 @keyframes shake { 25% { transform: translateY(-2px); } 75% { transform: translateY(2px); } }
 .hotbar { display: flex; background: rgba(0, 0, 0, .5); border: 2px solid #111; }
-.hslot { width: clamp(36px, 6.4vw, 54px); height: clamp(36px, 6.4vw, 54px); border: 2px solid #555; position: relative; display: flex; align-items: center; justify-content: center; }
+.hslot { width: clamp(32px, 5.2vw, 52px); height: clamp(32px, 5.2vw, 52px); border: 2px solid #555; position: relative; display: flex; align-items: center; justify-content: center; }
 .hslot .slot { background: transparent; border: none; width: 100%; height: 100%; max-height: none; }
 .hslot.sel { border: 3px solid #fff; box-shadow: 0 0 0 1px #000; z-index: 1; }
 .hslot.more b { font-size: 16px; color: #ddd; }
@@ -159,13 +159,14 @@ label { display: block; margin: 10px 0; font-size: 14px; color: var(--dim); }
 .dpad .left::after { border: 10px solid transparent; border-right: 14px solid rgba(255, 255, 255, .85); margin-left: -6px; }
 .dpad .right::after { border: 10px solid transparent; border-left: 14px solid rgba(255, 255, 255, .85); margin-left: 6px; }
 .dpad .jump::after { width: 14px; height: 14px; border-radius: 50%; background: rgba(255, 255, 255, .85); }
-.dbtn.sneak { position: absolute; left: calc(18px + var(--safe-l) + 176px * var(--dp)); bottom: calc(18px + var(--safe-b)); width: calc(52px * var(--dp)); height: calc(52px * var(--dp)); border-radius: 8px; }
+.dbtn.sneak { position: absolute; left: calc(18px + var(--safe-l) + 116px * var(--dp)); bottom: calc(26px + var(--safe-b) + 176px * var(--dp)); width: calc(52px * var(--dp)); height: calc(52px * var(--dp)); border-radius: 8px; }
 .dbtn.sneak::after { width: 18px; height: 10px; background: rgba(255, 255, 255, .85); border-radius: 3px; margin-top: 4px; }
 .dbtn.sneak.on { background: rgba(126, 200, 80, .6); }
 .flybtns { position: absolute; right: calc(18px + var(--safe-r)); bottom: calc(18px + var(--safe-b)); display: flex; flex-direction: column; gap: 6px; }
 .flybtns .dbtn { width: calc(60px * var(--dp)); height: calc(60px * var(--dp)); }
 .flyup::after { border: 10px solid transparent; border-bottom: 14px solid rgba(255, 255, 255, .85); margin-top: -6px; }
 .flydown::after { border: 10px solid transparent; border-top: 14px solid rgba(255, 255, 255, .85); margin-top: 6px; }
+.hud.under .bottom, .hud.under .dpad, .hud.under .sneak, .hud.under .flybtns, .hud.under .hbtn { visibility: hidden; }
 .hud.notouch .dpad, .hud.notouch .sneak, .hud.notouch .flybtns { display: none; }
 .hud.notouch .hbtn.chatb { display: block; }
 

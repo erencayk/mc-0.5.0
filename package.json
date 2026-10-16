@@ -4,9 +4,11 @@
   "private": true,
   "description": "Clean-room recreation of the Pocket Edition 0.5.0 alpha gameplay for iOS + Android with LAN multiplayer",
   "scripts": {
-    "build": "esbuild game/src/main.js --bundle --format=iife --target=es2019 --minify --sourcemap=inline --outfile=www/game.js",
-    "build:dev": "esbuild game/src/main.js --bundle --format=iife --target=es2019 --outfile=www/game.js",
-    "relay": "node tools/devserver.js"
+    "build": "esbuild game/src/main.js --bundle --format=iife --target=es2019 --minify --outfile=www/game.js",
+    "relay": "node tools/devserver.js",
+    "build:debug": "esbuild game/src/main.js --bundle --format=iife --target=es2019 --sourcemap=inline --outfile=www/game.js",
+    "android": "bash tools/build-android.sh",
+    "ios": "bash tools/build-ios-assets.sh"
   },
   "dependencies": {
     "fflate": "0.8.2"

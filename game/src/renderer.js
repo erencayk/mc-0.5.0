@@ -14,8 +14,9 @@ void main(){
   vUV = aUV;
   float l = max(aLight.x * uDay, aLight.y);
   float b = l / (4.0 - 3.0 * l);
+  b = pow(b, 0.85);
   b = mix(b, 1.0, uBright * 0.15);
-  b = max(b, 0.04);
+  b = max(b, 0.05);
   vec3 blk = vec3(1.0, 0.92, 0.8) * (aLight.y > aLight.x * uDay ? 1.0 : 0.0);
   vec3 tintc = mix(vec3(1.0), blk, 0.25);
   vCol = aTint.rgb * b * aLight.z * tintc;
@@ -261,7 +262,7 @@ export class Renderer {
     gl.bindTexture(gl.TEXTURE_2D, this.atlas);
     gl.uniform1i(P.u.uTex, 0);
     gl.uniform3f(P.u.uCam, cam.x, cam.y, cam.z);
-    gl.uniform1f(P.u.uDay, Math.max(0.2, st.day) * (1 - (scene.darken || 0)));
+    gl.uniform1f(P.u.uDay, Math.max(0.3, st.day) * (1 - (scene.darken || 0) * 0.7));
     gl.uniform1f(P.u.uBright, scene.brightness || 0);
     gl.uniform3f(P.u.uFogCol, fogCol[0], fogCol[1], fogCol[2]);
     gl.uniform4f(P.u.uColorMul, 1, 1, 1, 1);
