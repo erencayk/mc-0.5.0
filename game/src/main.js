@@ -299,7 +299,7 @@ class App {
       name: this.settings.name, color: this.settings.color,
       handlers: {
         welcome: (m) => {
-          world.seed = m.seed; world.time = m.time; world.mode = m.worldMode; world.spawn = m.spawn; world.name = m.world;
+          world.seed = m.seed; world.time = m.time; world.mode = m.worldMode; world.spawn = m.spawn; world.name = m.world; world.nightMode = !!m.night;
           if (m.biomes) world.biomes = inflateSync(storage.b64decode(m.biomes));
           me = new Player(m.name, m.pos[0], m.pos[1], m.pos[2]);
           me.id = m.id; me.mode = m.mode; me.health = m.hp; me.inv.load(m.inv); me.color = this.playerColor();
@@ -321,6 +321,11 @@ class App {
             if (pendingSpawns.length) { ents(pendingSpawns); pendingSpawns.length = 0; }
           }, 20);
         },
+        bulk: (changes) => {
+          if (started) world.bulkSet(changes);
+          else for (const [x, y, z, id, meta] of changes) if (world.inBounds(x, y, z)) world.rawSet(x, y, z, id, meta);
+        },
+        night: (on) => { world.nightMode = on; },
         blocks: (l) => {
           for (const [x, y, z, id, meta] of l) {
             if (started) {

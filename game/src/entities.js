@@ -3,6 +3,7 @@ import { B, blocks, collisionBoxes, isWater, isLava, LIQUID, SOLID, R } from './
 import { I, Inventory, getItem, maxStack } from './items.js';
 import { WOOL_COLORS, PAINTINGS } from './textures.js';
 import { WX, WZ, WY } from './world.js';
+import { MOBS_050 } from './pe050data.js';
 
 let NEXT_ID = 1;
 export function setNextId(n) { NEXT_ID = Math.max(NEXT_ID, n); }
@@ -353,7 +354,7 @@ class Mob extends Living {
 }
 
 class Animal extends Mob {
-  constructor(type, x, y, z) { super(type, x, y, z); this.persistent = true; this.health = this.maxHealth = 10; }
+  constructor(type, x, y, z) { super(type, x, y, z); this.persistent = true; this.health = this.maxHealth = MOBS_050.health[type] || 10; }
   onHurtBy() { this.panic = 60; this.target = null; }
   ai(game) {
     if (this.panic > 0) this.panic--;
@@ -379,7 +380,7 @@ export class Cow extends Animal {
   drops(r) { return [[I.LEATHER, (r() * 3) | 0], [this.fire > 0 ? I.STEAK : I.BEEF, 1 + ((r() * 3) | 0)]]; }
 }
 export class Chicken extends Animal {
-  constructor(x, y, z) { super('chicken', x, y, z); this.w = 0.4; this.h = 0.7; this.health = this.maxHealth = 4; this.temptItem = [I.SEEDS, I.PUMPKIN_SEEDS, I.MELON_SEEDS]; this.eggTimer = 6000 + Math.random() * 6000; this.fearless = true; }
+  constructor(x, y, z) { super('chicken', x, y, z); this.w = 0.4; this.h = 0.7; this.temptItem = [I.SEEDS, I.MELON_SEEDS]; this.eggTimer = 6000 + Math.random() * 6000; this.fearless = true; }
   drops(r) { return [[I.FEATHER, (r() * 3) | 0], [this.fire > 0 ? I.COOKED_CHICKEN : I.CHICKEN, 1]]; }
   tick(game) {
     super.tick(game);
@@ -406,7 +407,7 @@ export class Sheep extends Animal {
 }
 
 class Monster extends Mob {
-  constructor(type, x, y, z) { super(type, x, y, z); this.health = this.maxHealth = 20; this.attackDmg = 3; this.burnsInDay = false; this.angryAt = null; }
+  constructor(type, x, y, z) { super(type, x, y, z); this.health = this.maxHealth = MOBS_050.health[type] || 20; this.attackDmg = 2; this.burnsInDay = false; this.angryAt = null; }
   hostileNow(game) { return true; }
   ai(game) {
     // burn in daylight
@@ -430,12 +431,12 @@ class Monster extends Mob {
   }
 }
 export class Zombie extends Monster {
-  constructor(x, y, z) { super('zombie', x, y, z); this.burnsInDay = true; this.attackDmg = 4; this.moveSpeed = 0.085; }
+  constructor(x, y, z) { super('zombie', x, y, z); this.burnsInDay = true; this.attackDmg = MOBS_050.attack.zombie; this.moveSpeed = 0.085; }
   // classic pocket zombies dropped feathers
   drops(r) { return [[I.FEATHER, (r() * 3) | 0]]; }
 }
 export class PigZombie extends Monster {
-  constructor(x, y, z) { super('pigzombie', x, y, z); this.attackDmg = 5; this.moveSpeed = 0.1; this.fireImmune = true; this.persistent = true; }
+  constructor(x, y, z) { super('pigzombie', x, y, z); this.attackDmg = MOBS_050.attack.pigzombie; this.moveSpeed = 0.1; this.fireImmune = true; this.persistent = true; }
   hostileNow() { return false; }
   onHurtBy(game, ent) {
     if (ent && ent.type === 'player') {
@@ -467,7 +468,7 @@ export class Skeleton extends Monster {
   }
 }
 export class Spider extends Monster {
-  constructor(x, y, z) { super('spider', x, y, z); this.w = 1.4; this.h = 0.9; this.health = this.maxHealth = 16; this.attackDmg = 2; this.moveSpeed = 0.12; }
+  constructor(x, y, z) { super('spider', x, y, z); this.w = 1.4; this.h = 0.9; this.attackDmg = MOBS_050.attack.spider; this.moveSpeed = 0.12; }
   hostileNow(game) { return !game.isDay() || game.world.getBrightness(Math.floor(this.x), Math.floor(this.y + 0.5), Math.floor(this.z)) < 8; }
   drops(r) { return [[I.STRING, (r() * 3) | 0]]; }
   chase(game, p) {
@@ -489,7 +490,7 @@ export class Creeper extends Monster {
       if (this.fuse === 0) game.fx({ k: 'snd', s: 'fuse', x: this.x, y: this.y, z: this.z });
       this.fuse++;
       game.dirtyEntity(this);
-      if (this.fuse >= 30) { this.removed = true; game.explode(this.x, this.y + 0.5, this.z, 3, this); }
+      if (this.fuse >= MOBS_050.creeperFuse) { this.removed = true; game.explode(this.x, this.y + 0.5, this.z, 3, this); }
     } else {
       if (this.fuse > 0) { this.fuse = Math.max(0, this.fuse - 1); game.dirtyEntity(this); }
       this.walkTo(game, p.x, p.z);
@@ -639,7 +640,7 @@ export class PrimedTNT extends Entity {
     moveEntity(game.world, this, this.vx, this.vy, this.vz);
     this.vx *= 0.98; this.vy *= 0.98; this.vz *= 0.98;
     if (this.onGround) { this.vx *= 0.7; this.vz *= 0.7; this.vy *= -0.5; }
-    if (game.authority && --this.fuse <= 0) { this.removed = true; game.explode(this.x, this.y + 0.49, this.z, 4, this); }
+    if (game.authority && --this.fuse <= 0) { this.removed = true; game.explode(this.x, this.y + 0.49, this.z, MOBS_050.tntPower, this); }
     else if (!game.authority) this.fuse--;
   }
 }

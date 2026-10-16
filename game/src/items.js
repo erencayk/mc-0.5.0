@@ -1,6 +1,7 @@
 // Items, recipes and smelting.
 import { B, blocks, blockName } from './blocks.js';
 import { tex } from './textures.js';
+import { RECIPES_050, FURNACE_050, CREATIVE_050, ITEMS_050 } from './pe050data.js';
 
 export const I = {
   IRON_SHOVEL: 256, IRON_PICKAXE: 257, IRON_AXE: 258, FLINT_STEEL: 259, APPLE: 260, BOW: 261, ARROW: 262,
@@ -85,7 +86,6 @@ item(I.SUGAR, 'Sugar', 'sugar');
 item(I.BED, 'Bed', 'bed_item', { maxStack: 1, use: 'bed' });
 item(I.SHEARS, 'Shears', 'shears', { maxStack: 1, durability: 238, tool: 'shears', speed: 5 });
 item(I.MELON_SLICE, 'Melon', 'melon_slice', { food: 2 });
-item(I.PUMPKIN_SEEDS, 'Pumpkin Seeds', 'pumpkin_seeds', { plant: B.PUMPKIN_STEM });
 item(I.MELON_SEEDS, 'Melon Seeds', 'melon_seeds', { plant: B.MELON_STEM });
 item(I.BEEF, 'Raw Beef', 'beef_raw', { food: 3 });
 item(I.STEAK, 'Steak', 'steak', { food: 8 });
@@ -93,6 +93,15 @@ item(I.CHICKEN, 'Raw Chicken', 'chicken_raw', { food: 2 });
 item(I.COOKED_CHICKEN, 'Cooked Chicken', 'chicken_cooked', { food: 6 });
 export const DYE_NAMES = ['Ink Sac', 'Rose Red', 'Cactus Green', 'Cocoa Beans', 'Lapis Lazuli', 'Purple Dye', 'Cyan Dye', 'Light Gray Dye', 'Gray Dye', 'Pink Dye', 'Lime Dye', 'Dandelion Yellow', 'Light Blue Dye', 'Magenta Dye', 'Orange Dye', 'Bone Meal'];
 item(I.DYE, 'Dye', 'dye_0', { iconFn: (m) => 'dye_' + (m & 15), nameFn: (m) => DYE_NAMES[m & 15] });
+
+// durability / stack size / food values measured from 0.5.0
+for (const [id, [maxDmg, stack, food]] of Object.entries(ITEMS_050)) {
+  const it = items.get(+id);
+  if (!it) continue;
+  it.maxStack = stack;
+  if (it.durability) it.durability = maxDmg;
+  if (food) it.food = food;
+}
 
 export function isBlockItem(id) { return id > 0 && id < 256 && !!blocks[id]; }
 export function getItem(id) { return items.get(id); }
@@ -117,94 +126,16 @@ export function itemIconTile(id, meta = 0) {
 export function blockIconIsFlat(id) {
   const b = blocks[id];
   if (!b) return true;
-  return [2, 3, 8, 12, 15, 7, 18, 17].includes(b.render);
+  return [2, 3, 8, 12, 15, 7, 18, 17, 19].includes(b.render);
 }
 
 // ---------------------------------------------------------------- recipes
-// ingredient: [id, count, meta|-1]
-export const recipes = [];
-function rec(cat, out, ins, table = true) { recipes.push({ id: recipes.length, cat, out, in: ins, table }); }
+// The exact 0.5.0 recipe list (see pe050data.js). ingredient: [id, count, meta|-1]
+export const recipes = RECIPES_050.map(([cat, out, ins, table], i) => ({ id: i, cat, out, in: ins, table }));
 const ANY = -1;
 
-rec('Blocks', [B.PLANKS, 4, 0], [[B.LOG, 1, ANY]], false);
-rec('Items', [I.STICK, 4, 0], [[B.PLANKS, 2, ANY]], false);
-rec('Blocks', [B.WORKBENCH, 1, 0], [[B.PLANKS, 4, ANY]], false);
-rec('Blocks', [B.TORCH, 4, 0], [[I.STICK, 1, 0], [I.COAL, 1, ANY]], false);
-rec('Blocks', [B.SANDSTONE, 1, 0], [[B.SAND, 4, 0]], false);
-rec('Blocks', [B.STONE_BRICKS, 4, 0], [[B.STONE, 4, 0]], false);
-rec('Blocks', [B.WOOL, 1, 0], [[I.STRING, 4, 0]], false);
-rec('Blocks', [B.SNOW, 1, 0], [[I.SNOWBALL, 4, 0]], false);
-rec('Blocks', [B.CLAY, 1, 0], [[I.CLAY_BALL, 4, 0]], false);
-rec('Blocks', [B.BRICKS, 1, 0], [[I.BRICK, 4, 0]], false);
-rec('Blocks', [B.GLOWSTONE, 1, 0], [[I.GLOWSTONE_DUST, 4, 0]], false);
-rec('Blocks', [B.FURNACE, 1, 0], [[B.COBBLE, 8, 0]]);
-rec('Blocks', [B.CHEST, 1, 0], [[B.PLANKS, 8, ANY]]);
-rec('Blocks', [B.TNT, 1, 0], [[I.GUNPOWDER, 5, 0], [B.SAND, 4, 0]]);
-rec('Blocks', [B.BOOKSHELF, 1, 0], [[B.PLANKS, 6, ANY], [I.BOOK, 3, 0]]);
-rec('Blocks', [B.GOLD_BLOCK, 1, 0], [[I.GOLD_INGOT, 9, 0]]);
-rec('Blocks', [B.IRON_BLOCK, 1, 0], [[I.IRON_INGOT, 9, 0]]);
-rec('Blocks', [B.DIAMOND_BLOCK, 1, 0], [[I.DIAMOND, 9, 0]]);
-rec('Blocks', [B.LAPIS_BLOCK, 1, 0], [[I.DYE, 9, 4]]);
-rec('Blocks', [B.MELON, 1, 0], [[I.MELON_SLICE, 9, 0]]);
-rec('Blocks', [B.REACTOR, 1, 0], [[I.DIAMOND, 3, 0], [I.IRON_INGOT, 6, 0]]);
-rec('Items', [I.GOLD_INGOT, 9, 0], [[B.GOLD_BLOCK, 1, 0]]);
-rec('Items', [I.IRON_INGOT, 9, 0], [[B.IRON_BLOCK, 1, 0]]);
-rec('Items', [I.DIAMOND, 9, 0], [[B.DIAMOND_BLOCK, 1, 0]]);
-rec('Items', [I.DYE, 9, 4], [[B.LAPIS_BLOCK, 1, 0]]);
-const slabMats = [[B.STONE, 0], [B.SANDSTONE, 1], [B.PLANKS, 2], [B.COBBLE, 3], [B.BRICKS, 4], [B.STONE_BRICKS, 5]];
-for (const [mat, m] of slabMats) rec('Blocks', [B.SLAB, 6, m], [[mat, 3, mat === B.PLANKS ? ANY : 0]]);
-const stairMats = [[B.PLANKS, B.WOOD_STAIRS], [B.COBBLE, B.COBBLE_STAIRS], [B.BRICKS, B.BRICK_STAIRS], [B.STONE_BRICKS, B.STONEBRICK_STAIRS], [B.SANDSTONE, B.SANDSTONE_STAIRS], [B.NETHER_BRICK, B.NETHERBRICK_STAIRS]];
-for (const [mat, s] of stairMats) rec('Blocks', [s, 4, 0], [[mat, 6, mat === B.PLANKS ? ANY : 0]]);
-rec('Decoration', [B.FENCE, 2, 0], [[I.STICK, 6, 0]]);
-rec('Decoration', [B.FENCE_GATE, 1, 0], [[I.STICK, 4, 0], [B.PLANKS, 2, ANY]]);
-rec('Decoration', [B.LADDER, 3, 0], [[I.STICK, 7, 0]]);
-rec('Decoration', [I.DOOR, 1, 0], [[B.PLANKS, 6, ANY]]);
-rec('Decoration', [B.TRAPDOOR, 2, 0], [[B.PLANKS, 6, ANY]]);
-rec('Decoration', [I.BED, 1, 0], [[B.WOOL, 3, ANY], [B.PLANKS, 3, ANY]]);
-rec('Decoration', [I.PAINTING, 1, 0], [[I.STICK, 8, 0], [B.WOOL, 1, ANY]]);
-for (let c = 1; c < 16; c++) rec('Decoration', [B.WOOL, 1, c], [[I.DYE, 1, 15 - c], [B.WOOL, 1, 0]], false);
-const toolMats = { wood: [B.PLANKS, ANY], stone: [B.COBBLE, 0], iron: [I.IRON_INGOT, 0], gold: [I.GOLD_INGOT, 0], diamond: [I.DIAMOND, 0] };
-for (const m of Object.keys(toolMats)) {
-  const [mat, mm] = toolMats[m];
-  const [sw, sh, pk, ax, ho] = toolIds[m];
-  rec('Tools', [pk, 1, 0], [[mat, 3, mm], [I.STICK, 2, 0]]);
-  rec('Tools', [ax, 1, 0], [[mat, 3, mm], [I.STICK, 2, 0]]);
-  rec('Tools', [sh, 1, 0], [[mat, 1, mm], [I.STICK, 2, 0]]);
-  rec('Tools', [ho, 1, 0], [[mat, 2, mm], [I.STICK, 2, 0]]);
-  rec('Tools', [sw, 1, 0], [[mat, 2, mm], [I.STICK, 1, 0]]);
-}
-rec('Tools', [I.BOW, 1, 0], [[I.STICK, 3, 0], [I.STRING, 3, 0]]);
-rec('Tools', [I.ARROW, 4, 0], [[I.FLINT, 1, 0], [I.STICK, 1, 0], [I.FEATHER, 1, 0]]);
-rec('Tools', [I.SHEARS, 1, 0], [[I.IRON_INGOT, 2, 0]], false);
-rec('Tools', [I.FLINT_STEEL, 1, 0], [[I.IRON_INGOT, 1, 0], [I.FLINT, 1, 0]], false);
-rec('Items', [I.BOWL, 4, 0], [[B.PLANKS, 3, ANY]]);
-rec('Food', [I.BREAD, 1, 0], [[I.WHEAT, 3, 0]]);
-rec('Food', [I.MUSHROOM_STEW, 1, 0], [[I.BOWL, 1, 0], [B.BROWN_MUSHROOM, 1, 0], [B.RED_MUSHROOM, 1, 0]], false);
-rec('Items', [I.SUGAR, 1, 0], [[I.SUGARCANE, 1, 0]], false);
-rec('Items', [I.PAPER, 3, 0], [[I.SUGARCANE, 3, 0]]);
-rec('Items', [I.BOOK, 1, 0], [[I.PAPER, 3, 0]], false);
-rec('Items', [I.PUMPKIN_SEEDS, 4, 0], [[B.PUMPKIN, 1, 0]], false);
-rec('Items', [I.MELON_SEEDS, 1, 0], [[I.MELON_SLICE, 1, 0]], false);
-rec('Items', [I.DYE, 3, 15], [[I.BONE, 1, 0]], false);
-rec('Items', [I.DYE, 2, 1], [[B.ROSE, 1, 0]], false);
-rec('Items', [I.DYE, 2, 11], [[B.DANDELION, 1, 0]], false);
-rec('Items', [I.DYE, 2, 14], [[I.DYE, 1, 1], [I.DYE, 1, 11]], false);
-rec('Items', [I.DYE, 2, 9], [[I.DYE, 1, 1], [I.DYE, 1, 15]], false);
-rec('Items', [I.DYE, 2, 10], [[I.DYE, 1, 2], [I.DYE, 1, 15]], false);
-rec('Items', [I.DYE, 2, 8], [[I.DYE, 1, 0], [I.DYE, 1, 15]], false);
-rec('Items', [I.DYE, 2, 7], [[I.DYE, 1, 8], [I.DYE, 1, 15]], false);
-rec('Items', [I.DYE, 2, 12], [[I.DYE, 1, 4], [I.DYE, 1, 15]], false);
-rec('Items', [I.DYE, 2, 6], [[I.DYE, 1, 4], [I.DYE, 1, 2]], false);
-rec('Items', [I.DYE, 2, 5], [[I.DYE, 1, 4], [I.DYE, 1, 1]], false);
-rec('Items', [I.DYE, 2, 13], [[I.DYE, 1, 5], [I.DYE, 1, 9]], false);
-
-// ---------------------------------------------------------------- smelting
-export const smelting = new Map([
-  [B.COBBLE, [B.STONE, 1, 0]], [B.SAND, [B.GLASS, 1, 0]], [B.IRON_ORE, [I.IRON_INGOT, 1, 0]], [B.GOLD_ORE, [I.GOLD_INGOT, 1, 0]],
-  [B.LOG, [I.COAL, 1, 1]], [B.CACTUS, [I.DYE, 1, 2]], [I.PORKCHOP, [I.COOKED_PORKCHOP, 1, 0]], [I.BEEF, [I.STEAK, 1, 0]],
-  [I.CHICKEN, [I.COOKED_CHICKEN, 1, 0]], [I.CLAY_BALL, [I.BRICK, 1, 0]], [B.DIAMOND_ORE, [I.DIAMOND, 1, 0]],
-  [B.NETHERRACK, [B.NETHER_BRICK, 1, 0]], [B.COAL_ORE, [I.COAL, 1, 0]], [B.LAPIS_ORE, [I.DYE, 1, 4]]
-]);
+// ---------------------------------------------------------------- smelting (0.5.0 furnace table)
+export const smelting = new Map(FURNACE_050.map(([input, out, n, aux]) => [input, [out, n, aux]]));
 // fuel burn time in ticks (20/s)
 export function fuelTime(id) {
   if (id === I.COAL) return 1600;
@@ -216,28 +147,8 @@ export function fuelTime(id) {
   return 0;
 }
 
-// ---------------------------------------------------------------- creative inventory order
-export const CREATIVE = [];
-function cr(id, meta = 0) { CREATIVE.push([id, meta]); }
-[B.STONE, B.COBBLE, B.MOSSY_COBBLE, B.STONE_BRICKS, B.BRICKS, B.SANDSTONE, B.GRASS, B.DIRT, B.SAND, B.GRAVEL, B.CLAY,
-  B.PLANKS].forEach((i) => cr(i));
-[0, 1, 2].forEach((m) => cr(B.LOG, m));
-[0, 1, 2].forEach((m) => cr(B.LEAVES, m));
-[B.GLASS, B.OBSIDIAN, B.BEDROCK, B.NETHERRACK, B.NETHER_BRICK, B.GLOWSTONE, B.GLOWING_OBSIDIAN, B.REACTOR,
-  B.COAL_ORE, B.IRON_ORE, B.GOLD_ORE, B.DIAMOND_ORE, B.LAPIS_ORE, B.REDSTONE_ORE,
-  B.IRON_BLOCK, B.GOLD_BLOCK, B.DIAMOND_BLOCK, B.LAPIS_BLOCK, B.SNOW, B.ICE, B.SNOW_LAYER, B.CACTUS, B.PUMPKIN, B.MELON,
-  B.TNT, B.BOOKSHELF, B.WORKBENCH, B.FURNACE, B.CHEST].forEach((i) => cr(i));
-for (let m = 0; m < 6; m++) cr(B.SLAB, m);
-[B.WOOD_STAIRS, B.COBBLE_STAIRS, B.BRICK_STAIRS, B.STONEBRICK_STAIRS, B.SANDSTONE_STAIRS, B.NETHERBRICK_STAIRS,
-  B.FENCE, B.FENCE_GATE, B.LADDER, B.TRAPDOOR, I.DOOR, I.BED, I.PAINTING, B.TORCH].forEach((i) => cr(i));
-for (let m = 0; m < 16; m++) cr(B.WOOL, m);
-[0, 1, 2].forEach((m) => cr(B.SAPLING, m));
-[B.TALLGRASS, B.DEADBUSH, B.DANDELION, B.ROSE, B.BROWN_MUSHROOM, B.RED_MUSHROOM, B.COBWEB, I.SUGARCANE, I.SEEDS, I.PUMPKIN_SEEDS, I.MELON_SEEDS].forEach((i) => cr(i));
-for (const m of ['wood', 'stone', 'iron', 'gold', 'diamond']) toolIds[m].forEach((i) => cr(i));
-[I.BOW, I.ARROW, I.SHEARS, I.FLINT_STEEL, I.SNOWBALL, I.EGG, I.COAL, I.IRON_INGOT, I.GOLD_INGOT, I.DIAMOND, I.STICK, I.BOWL,
-  I.STRING, I.FEATHER, I.GUNPOWDER, I.FLINT, I.LEATHER, I.BRICK, I.CLAY_BALL, I.PAPER, I.BOOK, I.GLOWSTONE_DUST, I.BONE, I.SUGAR,
-  I.WHEAT, I.APPLE, I.BREAD, I.MUSHROOM_STEW, I.MELON_SLICE, I.PORKCHOP, I.COOKED_PORKCHOP, I.BEEF, I.STEAK, I.CHICKEN, I.COOKED_CHICKEN].forEach((i) => cr(i));
-for (let m = 0; m < 16; m++) cr(I.DYE, m);
+// ---------------------------------------------------------------- creative inventory (0.5.0 order)
+export const CREATIVE = CREATIVE_050.map(([id, m]) => [id, m]);
 
 // ---------------------------------------------------------------- inventory
 export class Inventory {

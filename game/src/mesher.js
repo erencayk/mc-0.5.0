@@ -1,6 +1,6 @@
 // Section mesher. Builds quad lists (4 verts each) for a 16^3 section.
 // Vertex: x,y,z,u,v (float32) + sky,blk,shade,_ (u8) + r,g,b,a tint (u8) = 28 bytes.
-import { blocks, R, B, OPAQUE, RENDER, LIQUID, FACE_DIRS, fenceConnections, doorState } from './blocks.js';
+import { blocks, R, B, OPAQUE, RENDER, LIQUID, FACE_DIRS, fenceConnections, doorState, paneBoxes } from './blocks.js';
 import { WX, WY, WZ, idx } from './world.js';
 import { tileUV, tex } from './textures.js';
 import { BIOME } from './worldgen.js';
@@ -355,6 +355,7 @@ export function buildSection(world, sx, sy, sz) {
           break;
         }
         case R.BED: bed(buf, x, y, z, meta); break;
+        case R.PANE: for (const bx of paneBoxes(world, x, y, z)) box(buf, x, y, z, bx, (f) => b.texFn(f, meta), WHITE, false, true); break;
       }
     }
   }

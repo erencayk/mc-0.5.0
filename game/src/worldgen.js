@@ -186,12 +186,10 @@ export function generate(world, seed, progress) {
       else if (bm === BIOME.FOREST && p < 0.05) world.rawSet(x, y + 1, z, B.TALLGRASS, 1);
       else if (bm === BIOME.SWAMP && p < 0.08) world.rawSet(x, y + 1, z, B.TALLGRASS, 1);
       else if (p < 0.135 && p >= 0.128 && bm !== BIOME.TAIGA) world.rawSet(x, y + 1, z, nS.noise2(x / 20, z / 20) > 0 ? B.DANDELION : B.ROSE);
-      else if (p > 0.9995 && bm !== BIOME.TAIGA) world.rawSet(x, y + 1, z, B.PUMPKIN, 2 + ((r() * 4) | 0));
       else if (p > 0.996 && (bm === BIOME.FOREST || bm === BIOME.SWAMP)) world.rawSet(x, y + 1, z, r() < 0.5 ? B.BROWN_MUSHROOM : B.RED_MUSHROOM);
     } else if (ground === B.SAND && bm === BIOME.DESERT) {
       const p = r();
       if (p < 0.006) { const hgt = 1 + ((r() * 3) | 0); for (let k = 1; k <= hgt; k++) world.rawSet(x, y + k, z, B.CACTUS); }
-      else if (p < 0.012) world.rawSet(x, y + 1, z, B.DEADBUSH);
     }
     // sugar cane next to water
     if ((ground === B.GRASS || ground === B.SAND || ground === B.DIRT) && y === SEA && r() < 0.12) {

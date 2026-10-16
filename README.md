@@ -2,7 +2,7 @@
 
 Minecraft Pocket Edition **v0.5.0 alpha** (Kasım 2012) sürümünün oynanışını sıfırdan yeniden yazan, **iPhone/iPad ve Android'de çalışan** ve **iOS ile Android'in aynı Wi-Fi üzerinden birlikte oynayabildiği** bir hayran yapımı.
 
-> **Yasal not:** Bu proje "clean-room" (temiz oda) bir yeniden yapımdır. İçinde Mojang/Microsoft'a ait **hiçbir kod, doku, ses veya dosya yoktur**. Orijinal oyunun ikili dosyaları tersine mühendislikle çıkarılmadı ve dağıtılmıyor; bu hem telif hakkı ihlali olurdu hem de buna gerek yoktu. Tüm dokular (`game/src/textures.js`) ve sesler (`game/src/audio.js`) program tarafından üretilir. Proje Mojang veya Microsoft ile bağlantılı değildir ve yalnızca kişisel kullanım içindir.
+> **Yasal not:** Bu proje "clean-room" (temiz oda) bir yeniden yapımdır. İçinde Mojang/Microsoft'a ait **hiçbir kod, doku, ses veya dosya yoktur**. Orijinal 0.5.0 APK'sı REA yaklaşımıyla (statik analiz + CPU emülasyonu) yalnızca **ölçüm** için incelendi: tarifler, ID'ler, can/hasar değerleri ve Nether Reactor'ün davranışı çıkarılıp `game/src/pe050data.js` dosyasına veri olarak yazıldı (ayrıntılar: [docs/REA_ANALYSIS.md](docs/REA_ANALYSIS.md)). APK'nın kendisi, kodu ve dosyaları dağıtılmıyor. Tüm dokular (`game/src/textures.js`) ve sesler (`game/src/audio.js`) program tarafından üretilir. Proje Mojang veya Microsoft ile bağlantılı değildir ve yalnızca kişisel kullanım içindir.
 
 ---
 
@@ -110,7 +110,7 @@ WASD hareket · Space zıpla (iki kez = uç) · Shift eğil · Fare bak · Sol t
 ## 5. 0.5.0 içeriği — neler var
 
 **0.5.0 ile gelenler**
-- **Nether Reactor Core** (3 elmas + 6 demir külçe). Altın blok ve kırık taştan 3×3×3 deseni kur, çekirdeğe dokun. Reaktör aktifleşir, desen **Glowing Obsidian**'a döner ve etrafında netherrack'ten bir **Nether Spire** yükselir. Yaklaşık 45 saniye boyunca ganimet (glowstone tozu, kaktüs, şeker kamışı, kabak/kavun tohumu, mantar, yay, ok, tüy, kemik, yatak, kapı, tablo, kitap, kase…) ve **Zombie Pigman** çıkar. Sonunda reaktör söner, obsidyen kalır ve kule delik deşik olur.
+- **Nether Reactor Core** (3 elmas + 6 demir külçe). Altın blok ve kırık taştan 3×3×3 deseni kur, çekirdeğe dokun. Sadece **hayatta kalma** modunda çalışır; tüm oyuncular reaktörün 5 blok yakınında olmalıdır. Etraftaki alan boşaltılır, **obsidyenden** bir **Nether Spire** yükselir ve gökyüzü kararır. Desen birkaç saniye içinde **Glowing Obsidian**'a döner. Yaklaşık 46 saniye boyunca 10 dalga hâlinde ganimet (glowstone tozu, kavun tohumu, mantar, şeker kamışı, kaktüs; daha nadir olarak ok, yatak, kemik, kitap, yay, kase, tüy, tablo, kapı) ve **Zombie Pigman** çıkar. Sonunda reaktör söner, gökyüzü aydınlanır ve kulenin büyük kısmı çöker. Bütün süreler ve sayılar orijinal oyundan ölçüldü.
   ```
   Alt kat:  A K A      Orta kat: K . K      Üst kat:  . K .
             K K K               . R .                K K K
@@ -129,7 +129,7 @@ WASD hareket · Space zıpla (iki kez = uç) · Shift eğil · Fare bak · Sol t
 - 256×256×128 sonlu dünya: biyomlar (ova, orman, çöl, tayga, bataklık, sahil, okyanus), mağaralar, lav gölleri, cevherler (kömür, demir, altın, elmas, lapis, kızıltaş), ağaçlar (meşe, ladin, huş), çiçekler, uzun ot, şeker kamışı, kaktüs, balkabağı, kar ve buz. Düz dünya seçeneği de var.
 - Gün/gece döngüsü, yumuşak ışıklandırma ve ambient occlusion, bulutlar, güneş, ay ve yıldızlar.
 - **Mob'lar**: domuz, inek, koyun (makas, boya, renkli yün, ot yiyip yün yenileme), tavuk (yumurta bırakır, atılan yumurtadan tavuk çıkabilir), zombi (gündüz yanar, eski PE'deki gibi tüy düşürür), iskelet (ok atar), örümcek (gündüz tarafsız), creeper (patlar).
-- **Üretim**: 0.5.0 tarzı liste. Envanterde 2×2 tarifler, çalışma masasında hepsi. 100'ü aşkın tarif: tüm alet ve silahlar, merdiven, yarım blok, çit, çit kapısı, kapı, tuzak kapı, yatak, sandık, fırın, TNT, kitaplık, boya karışımları, renkli yün ve diğerleri.
+- **Üretim**: 0.5.0 tarzı liste. Envanterde 2×2 tarifler, çalışma masasında hepsi. Orijinal oyunun **95 tarifinin tamamı** (birebir aynı liste), 12 fırın tarifi ve orijinal sırasıyla 86 öğelik yaratıcı envanter.
 - **Fırın** (yakıt ve pişirme), **sandık** (27 slot), **yatak** (doğma noktası).
 - **Çiftçilik**: çapa, tohum, buğday, ekmek, sulanan tarla toprağı, kemik tozu ile büyütme.
 - **Su ve lav akışı**: sonsuz su kaynağı, obsidyen ve kırık taş oluşumu. Kum ve çakıl düşer. TNT ve creeper patlamaları. Ateş ve çakmak taşı.

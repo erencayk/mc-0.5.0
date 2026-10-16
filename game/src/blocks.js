@@ -1,6 +1,7 @@
 // Block registry. IDs follow the familiar numeric scheme so worlds are easy to reason about,
 // but every behaviour here is an independent implementation.
 import { tex } from './textures.js';
+import { TILES_050 } from './pe050data.js';
 
 export const B = {
   AIR: 0, STONE: 1, GRASS: 2, DIRT: 3, COBBLE: 4, PLANKS: 5, SAPLING: 6, BEDROCK: 7,
@@ -14,14 +15,14 @@ export const B = {
   FURNACE: 61, LIT_FURNACE: 62, WOOD_DOOR: 64, LADDER: 65, COBBLE_STAIRS: 67,
   REDSTONE_ORE: 73, LIT_REDSTONE_ORE: 74, SNOW_LAYER: 78, ICE: 79, SNOW: 80, CACTUS: 81, CLAY: 82,
   SUGARCANE: 83, FENCE: 85, PUMPKIN: 86, NETHERRACK: 87, GLOWSTONE: 89, TRAPDOOR: 96,
-  STONE_BRICKS: 98, MELON: 103, PUMPKIN_STEM: 104, MELON_STEM: 105, FENCE_GATE: 107,
+  STONE_BRICKS: 98, GLASS_PANE: 102, MELON: 103, PUMPKIN_STEM: 104, MELON_STEM: 105, FENCE_GATE: 107,
   BRICK_STAIRS: 108, STONEBRICK_STAIRS: 109, NETHER_BRICK: 112, NETHERBRICK_STAIRS: 114,
   SANDSTONE_STAIRS: 128, GLOWING_OBSIDIAN: 246, REACTOR: 247, INVISIBLE_BEDROCK: 95
 };
 
 export const R = {
   NONE: 0, CUBE: 1, CROSS: 2, TORCH: 3, LIQUID: 4, SLAB: 5, STAIRS: 6, DOOR: 7, LADDER: 8,
-  FENCE: 9, BED: 10, CACTUS: 11, CROPS: 12, FARMLAND: 13, SNOW: 14, STEM: 15, GATE: 16, TRAPDOOR: 17, FIRE: 18
+  FENCE: 9, BED: 10, CACTUS: 11, CROPS: 12, FARMLAND: 13, SNOW: 14, STEM: 15, GATE: 16, TRAPDOOR: 17, FIRE: 18, PANE: 19
 };
 
 // face order: 0 down, 1 up, 2 north(-z), 3 south(+z), 4 west(-x), 5 east(+x)
@@ -113,7 +114,7 @@ reg(B.BRICKS, 'Bricks', { tex: 'bricks', hardness: 2, tool: 'pickaxe', level: 0 
 reg(B.TNT, 'TNT', { tex: { top: 'tnt_top', bottom: 'tnt_bottom', side: 'tnt_side' }, hardness: 0, sound: 'grass', tnt: true });
 reg(B.BOOKSHELF, 'Bookshelf', { tex: (f) => (f < 2 ? T('planks') : T('bookshelf')), hardness: 1.5, tool: 'axe', sound: 'wood', flammable: true, drop: () => [[340, 3, 0]] });
 reg(B.MOSSY_COBBLE, 'Moss Stone', { tex: 'mossy_cobblestone', hardness: 2, tool: 'pickaxe', level: 0 });
-reg(B.OBSIDIAN, 'Obsidian', { tex: 'obsidian', hardness: 50, tool: 'pickaxe', level: 3 });
+reg(B.OBSIDIAN, 'Obsidian', { tex: 'obsidian', hardness: 10, tool: 'pickaxe', level: 3 });
 reg(B.TORCH, 'Torch', { render: R.TORCH, solid: false, tex: 'torch', light: 14, hardness: 0, pass: 1, sound: 'wood', needsSupport: true, drop: () => [[B.TORCH, 1, 0]] });
 reg(B.FIRE, 'Fire', { render: R.FIRE, solid: false, tex: 'fire', light: 15, hardness: 0, pass: 1, replaceable: true, drop: () => [], fire: true });
 const stairs = (id, name, t, props = {}) => reg(id, name, Object.assign({ render: R.STAIRS, tex: typeof t === 'function' ? t : texFn(t), hardness: 2, tool: 'pickaxe', level: 0, lightOpacity: 15, drop: () => [[id, 1, 0]] }, props));
@@ -162,6 +163,14 @@ reg(B.REACTOR, 'Nether Reactor Core', {
   tex: (f, m) => T(m === 1 ? 'reactor_core_active' : m === 2 ? 'reactor_core_used' : 'reactor_core'), hardness: 3, tool: 'pickaxe', level: 0,
   lightFn: (m) => (m === 1 ? 15 : 0), drop: () => [[264, 3, 0], [265, 6, 0]], reactor: true
 });
+
+reg(B.GLASS_PANE, 'Glass Pane', { render: R.PANE, tex: 'glass', opaque: false, pass: 1, lightOpacity: 0, hardness: 0.3, sound: 'glass', drop: () => [], pane: true });
+
+// hardness values measured from the 0.5.0 build
+for (const [id, [hard]] of Object.entries(TILES_050)) {
+  const b = blocks[+id];
+  if (b && b.hardness >= 0 && hard >= 0 && !b.liquid) b.hardness = hard;
+}
 
 // resolve tex specs to functions
 for (const b of blocks) {
@@ -223,6 +232,7 @@ export function collisionBoxes(world, x, y, z, id, meta) {
     case R.FENCE: return [fenceBox(world, x, y, z, true)];
     case R.GATE: return (meta & 4) ? null : [((meta & 1) ? [0.375, 0, 0, 0.625, 1.5, 1] : [0, 0, 0.375, 1, 1.5, 0.625])];
     case R.TRAPDOOR: return [trapdoorBox(meta)];
+    case R.PANE: return paneBoxes(world, x, y, z);
     default:
       return [b.aabb || [0, 0, 0, 1, 1, 1]];
   }
@@ -255,11 +265,24 @@ export function selectionBox(world, x, y, z, id, meta) {
     case R.SLAB: return b.aabbFn(meta);
     case R.DOOR: return doorBox(world, x, y, z, meta);
     case R.TRAPDOOR: return trapdoorBox(meta);
+    case R.PANE: { const bs = paneBoxes(world, x, y, z); return bs.reduce((a, c) => [Math.min(a[0], c[0]), 0, Math.min(a[2], c[2]), Math.max(a[3], c[3]), 1, Math.max(a[5], c[5])]); }
     case R.FIRE: return null;
     default: return b.aabb || [0, 0, 0, 1, 1, 1];
   }
 }
 
+export function paneConnections(world, x, y, z) {
+  const c = (xx, zz) => { const id = world.getBlock(xx, y, zz); return id === B.GLASS_PANE || id === B.GLASS || OPAQUE[id] === 1; };
+  return [c(x, z - 1), c(x, z + 1), c(x - 1, z), c(x + 1, z)];
+}
+export function paneBoxes(world, x, y, z) {
+  const [n, s, w, e] = paneConnections(world, x, y, z);
+  const t0 = 7 / 16, t1 = 9 / 16, out = [];
+  if (!n && !s && !w && !e) return [[0, 0, t0, 1, 1, t1], [t0, 0, 0, t1, 1, 1]];
+  if (n || s) out.push([t0, 0, n ? 0 : t0, t1, 1, s ? 1 : t1]);
+  if (w || e) out.push([w ? 0 : t0, 0, t0, e ? 1 : t1, 1, t1]);
+  return out;
+}
 function connectsFence(world, x, y, z) {
   const id = world.getBlock(x, y, z);
   return id === B.FENCE || id === B.FENCE_GATE || (OPAQUE[id] === 1);

@@ -256,6 +256,58 @@ export class World {
     if (this.onLight) this.onLight(affected);
   }
 
+  // ------------------------------------------------------------------ bulk edits (e.g. the nether spire)
+  // changes: array of [x, y, z, id, meta]; relights the touched box once instead of per block
+  bulkSet(changes) {
+    if (!changes.length) return;
+    let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1, y1 = -1, z1 = -1;
+    for (const [x, y, z, id, meta] of changes) {
+      if (!this.inBounds(x, y, z)) continue;
+      const i = idx(x, y, z);
+      if (this.blocks[i] !== id && blocks[this.blocks[i]] && blocks[this.blocks[i]].container) this.tiles.delete(i);
+      this.blocks[i] = id; this.meta[i] = meta || 0;
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); z0 = Math.min(z0, z); x1 = Math.max(x1, x); y1 = Math.max(y1, y); z1 = Math.max(z1, z);
+    }
+    if (x1 < 0) return;
+    this.relightBox(x0, z0, x1, z1);
+    for (const l of this.bulkListeners || []) l(x0, y0, z0, x1, y1, z1);
+  }
+  onBulk(fn) { (this.bulkListeners = this.bulkListeners || []).push(fn); }
+
+  relightBox(bx0, bz0, bx1, bz1) {
+    const X0 = Math.max(0, bx0 - 15), X1 = Math.min(WX - 1, bx1 + 15), Z0 = Math.max(0, bz0 - 15), Z1 = Math.min(WZ - 1, bz1 + 15);
+    const L = this.light, aq = this._aq, M = aq.length - 1;
+    for (let x = X0; x <= X1; x++) for (let z = Z0; z <= Z1; z++) {
+      this.computeHeight(x, z);
+      const base = ((x << 8) | z) << 7;
+      L.fill(0, base, base + WY);
+    }
+    const inBox = (x, z) => x >= X0 && x <= X1 && z >= Z0 && z <= Z1;
+    for (const shift of [4, 0]) {
+      this._bfsAdd(shift, () => {
+        let n = 0;
+        for (let x = X0 - 1; x <= X1 + 1; x++) for (let z = Z0 - 1; z <= Z1 + 1; z++) {
+          if (x < 0 || z < 0 || x >= WX || z >= WZ) continue;
+          const base = ((x << 8) | z) << 7;
+          if (!inBox(x, z)) { // light flowing in from outside the box
+            for (let y = 0; y < WY; y++) if ((L[base + y] >> shift) & 15) aq[n++ & M] = base + y;
+            continue;
+          }
+          if (shift) {
+            const h = this.height[(x << 8) | z];
+            for (let y = h; y < WY; y++) { L[base + y] |= 0xf0; aq[n++ & M] = base + y; }
+          } else {
+            for (let y = 0; y < WY; y++) {
+              const id = this.blocks[base + y];
+              if (id && (LIGHT_EMIT[id] || blocks[id].lightFn)) { const e = this.emitOf(base + y); if (e) { L[base + y] = (L[base + y] & 0xf0) | e; aq[n++ & M] = base + y; } }
+            }
+          }
+        }
+        return n;
+      });
+    }
+  }
+
   // ------------------------------------------------------------------ tile entities
   getTile(x, y, z) { return this.tiles.get(idx(x, y, z)); }
   setTile(x, y, z, t) { this.tiles.set(idx(x, y, z), t); }

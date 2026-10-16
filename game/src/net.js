@@ -36,6 +36,8 @@ export class Server {
     g.hooks.entityRemove.push((e) => { this.lastSent.delete(e.id); this.bcast({ t: 'rm', ids: [e.id] }); });
     g.hooks.entityDirty.push((e) => this.dirtyEnts.add(e.id));
     g.fxListeners.push((fx) => { if (!fx._remote) this.bcastFx(fx); });
+    g.hooks.bulk.push((changes) => { if (this.clients.size) this.bcastAll({ t: 'bulk', d: b64encode(deflateSync(new TextEncoder().encode(JSON.stringify(changes)))) }); });
+    g.hooks.night.push((on) => this.bcast({ t: 'night', v: on ? 1 : 0 }));
     this.t.handlers.accept = (cid, addr) => this.onAccept(cid, addr);
     this.t.handlers.msg = (cid, data) => this.onMsg(cid, data);
     this.t.handlers.close = (cid) => this.onClose(cid);
@@ -61,6 +63,8 @@ export class Server {
     const s = JSON.stringify(m);
     for (const c of this.clients.values()) if (c.ready && c.player !== except) this.t.send(c.cid, s);
   }
+  // to every connected client, including ones still downloading the world
+  bcastAll(m) { const s = JSON.stringify(m); for (const c of this.clients.values()) if (c.player) this.t.send(c.cid, s); }
   bcastFx(fx) {
     const s = JSON.stringify({ t: 'fx', e: fx });
     for (const c of this.clients.values()) {
@@ -111,7 +115,7 @@ export class Server {
       c.name = name;
       this.sendTo(c, {
         t: 'welcome', id: p.id, name, seed: g.world.seed, time: g.world.time, mode: p.mode, worldMode: g.world.mode,
-        pos: [p.x, p.y, p.z], hp: p.health, inv: p.inv.toJSON(), world: this.worldName, diff: g.difficulty, spawn: g.world.spawn,
+        pos: [p.x, p.y, p.z], hp: p.health, inv: p.inv.toJSON(), world: this.worldName, diff: g.difficulty, spawn: g.world.spawn, night: g.world.nightMode ? 1 : 0,
         biomes: g.world.biomes ? b64encode(deflateSync(g.world.biomes)) : null
       });
       for (let cx = 0; cx < WX / 16; cx++) for (let cz = 0; cz < WZ / 16; cz++) c.chunkQueue.push([cx, cz]);
@@ -268,6 +272,8 @@ export class Client {
       case 'knock': h.knock(m.v); break;
       case 'mode': h.mode(m.m); break;
       case 'reactor': h.reactor && h.reactor(m.r); break;
+      case 'bulk': h.bulk(JSON.parse(new TextDecoder().decode(inflateSync(b64decode(m.d))))); break;
+      case 'night': h.night(!!m.v); break;
       case 'bye': h.closed(m.reason || 'Disconnected'); this.close(); break;
     }
   }

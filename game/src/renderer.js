@@ -116,6 +116,11 @@ export class Renderer {
     this.buildClouds();
     for (let sx = 0; sx < WX / 16; sx++) for (let sy = 0; sy < WY / 16; sy++) for (let sz = 0; sz < WZ / 16; sz++) this.dirty.add(this.key(sx, sy, sz));
     world.onChange((x, y, z) => this.markBlock(x, y, z));
+    world.onBulk((x0, y0, z0, x1, y1, z1) => {
+      for (let sx = Math.max(0, (x0 - 16) >> 4); sx <= Math.min(15, (x1 + 16) >> 4); sx++)
+        for (let sz = Math.max(0, (z0 - 16) >> 4); sz <= Math.min(15, (z1 + 16) >> 4); sz++)
+          for (let sy = 0; sy < WY / 16; sy++) this.dirty.add(this.key(sx, sy, sz));
+    });
     world.onLight = (cells) => {
       for (const i of cells) {
         const y = i & 127, z = (i >> 7) & 255, x = i >> 15;
@@ -230,6 +235,8 @@ export class Renderer {
     const ang = (t - 0.25) * Math.PI * 2;
     let day = Math.cos(ang) * 2 + 0.5;
     day = Math.max(0, Math.min(1, day));
+    // an active nether reactor plunges the world into night (as in 0.5.0)
+    if (this.world.nightMode) { const sky = [0.06, 0.01, 0.01]; return { day: 0, sky, fog: [0.16, 0.03, 0.02], ang, sunset: 0 }; }
     const dayC = [0.53, 0.72, 1.0], nightC = [0.02, 0.03, 0.08];
     const sky = dayC.map((c, i) => nightC[i] + (c - nightC[i]) * day);
     // sunset glow

@@ -6,6 +6,7 @@ import { WX, WY, WZ, SEA, idx } from './world.js';
 import { mulberry } from './noise.js';
 import { growTree } from './worldgen.js';
 import { PAINTINGS } from './textures.js';
+import { TILES_050, DOME_050, REACTOR_050, MOBS_050 } from './pe050data.js';
 import {
   Entity, Player, ItemEntity, Arrow, Thrown, PrimedTNT, FallingBlock, Painting, MOB_CLASSES, HOSTILE,
   Pig, Cow, Chicken, Sheep, PigZombie, createEntity, livingPhysics, liquidAt, rayBox, setNextId
@@ -31,7 +32,7 @@ export class Game {
     this.scheduled = new Map(); // idx -> due tick
     this.tick = 0;
     this.fxListeners = [];
-    this.hooks = { blockChange: [], entityAdd: [], entityRemove: [], entityDirty: [] };
+    this.hooks = { blockChange: [], entityAdd: [], entityRemove: [], entityDirty: [], bulk: [], night: [] };
     this.difficulty = opts.difficulty || 'normal';
     this.reactor = null;
     this.sleepTicks = 0;
@@ -41,7 +42,7 @@ export class Game {
 
   // ------------------------------------------------------------------ basics
   fx(e) { for (const f of this.fxListeners) f(e); }
-  isDay() { const t = this.world.time % DAY; return t < 12500 || t > 23500; }
+  isDay() { if (this.world.nightMode) return false; const t = this.world.time % DAY; return t < 12500 || t > 23500; }
   addEntity(e) {
     if (e.type === 'player') { this.players.set(e.id, e); }
     else this.entities.set(e.id, e);
@@ -450,10 +451,11 @@ export class Game {
     this.fx({ k: 'explode', x, y, z, p: power });
     if (!this.authority) return;
     const destroyed = new Map();
+    // blast resistance as stored in 0.5.0 (explosion code divides it by 5)
     const res = (id) => {
-      if (id === B.BEDROCK || id === B.INVISIBLE_BEDROCK) return 1e9;
-      if (id === B.OBSIDIAN || id === B.GLOWING_OBSIDIAN) return 6000;
-      if (LIQUID[id]) return 500;
+      const t = TILES_050[id];
+      if (t) return t[1] / 5;
+      if (LIQUID[id]) return 100;
       const b = blocks[id]; return b ? Math.max(0, b.hardness) * 5 : 0;
     };
     for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) for (let k = 0; k < 16; k++) {
@@ -1200,7 +1202,7 @@ export class Game {
     }
   }
 
-  // ------------------------------------------------------------------ nether reactor
+  // ------------------------------------------------------------------ nether reactor (behaviour measured from 0.5.0)
   reactorPattern(x, y, z) {
     const w = this.world;
     const G = B.GOLD_BLOCK, C = B.COBBLE, A = 0;
@@ -1217,95 +1219,144 @@ export class Game {
     }
     return true;
   }
-  activateReactor(p, x, y, z) {
-    const w = this.world;
-    if (w.getMeta(x, y, z) !== 0) return;
-    if (this.reactor) { this.msg(p, 'Another reactor is already active'); return; }
-    if (!this.reactorPattern(x, y, z)) { this.msg(p, 'Not the correct pattern!'); return; }
-    if (y < 4 || y + 30 > WY - 1) { this.msg(p, 'The nether reactor needs to be built lower down.'); return; }
-    if (x < 10 || z < 10 || x > WX - 11 || z > WZ - 11) { this.msg(p, 'Not enough space around the reactor'); return; }
-    for (const q of this.players.values()) {
-      if (Math.abs(q.x - (x + 0.5)) > 1.5 || Math.abs(q.z - (z + 0.5)) > 1.5 || q.y < y - 1 || q.y > y + 2) {
-        if (Math.abs(q.x - x) < 9 && Math.abs(q.z - z) < 9 && q.y > y - 3 && q.y < y + 32) continue;
-      }
-    }
-    this.broadcastMsg('Active!');
-    w.setMeta(x, y, z, 1);
-    // core structure turns to glowing obsidian
-    for (let l = -1; l <= 1; l++) for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
-      const id = w.getBlock(x + i, y + l, z + j);
-      if (id === B.GOLD_BLOCK || id === B.COBBLE) this.setBlock(x + i, y + l, z + j, B.GLOWING_OBSIDIAN);
-    }
-    this.buildSpire(x, y, z);
-    this.reactor = { x, y, z, t: 0 };
-    this.world.reactorState = this.reactor;
+  playersNearReactor(x, y, z, range, dy = 3) {
+    return [...this.players.values()].filter((q) => q.deathTime === 0 && Math.abs(q.x - (x + 0.5)) <= range && Math.abs(q.z - (z + 0.5)) <= range && Math.abs(q.y - y) <= dy);
   }
+  activateReactor(p, x, y, z) {
+    const w = this.world, R = REACTOR_050;
+    if (w.getMeta(x, y, z) !== 0) return;
+    if (p.mode === 'creative') return; // the reactor only reacts in survival
+    if (!this.reactorPattern(x, y, z)) { this.msg(p, 'Not the correct pattern!'); return; }
+    const alive = [...this.players.values()].filter((q) => q.deathTime === 0);
+    if (this.playersNearReactor(x, y, z, R.playerRange).length < alive.length) { this.msg(p, 'All players need to be close to the reactor.'); return; }
+    if (y > R.maxY) { this.msg(p, 'The nether reactor needs to be built lower down.'); return; }
+    if (y + R.clearY0 < 1) { this.msg(p, 'The nether reactor needs to be built higher up.'); return; }
+    if (this.reactor) { this.msg(p, 'Another reactor is already active'); return; }
+    this.msg(p, 'Active!');
+    w.setMeta(x, y, z, 1);
+    this.reactor = { x, y, z, t: 0, level: 0, running: true, finished: false };
+    this.buildSpire(x, y, z);
+    this.setNightMode(true);
+  }
+  setNightMode(on) {
+    this.world.nightMode = !!on;
+    for (const h of this.hooks.night || []) h(!!on);
+  }
+  domeCell(ch) { return ch === 'a' ? 0 : (ch === 'o' || ch === 'x') ? B.OBSIDIAN : -1; }
   buildSpire(cx, cy, cz) {
-    const w = this.world;
-    const set = (x, y, z, id) => { if (w.inBounds(x, y, z) && w.getBlock(x, y, z) !== B.REACTOR && w.getBlock(x, y, z) !== B.GLOWING_OBSIDIAN) this.setBlock(x, y, z, id); };
-    const by = cy - 2;
-    // floor
-    for (let dx = -8; dx <= 8; dx++) for (let dz = -8; dz <= 8; dz++) set(cx + dx, by, cz + dz, B.NETHERRACK);
-    // clear interior & build tiered walls
-    const tiers = [[8, 0, 4], [7, 5, 9], [6, 10, 14], [5, 15, 19], [4, 20, 23], [3, 24, 27], [2, 28, 30]];
-    for (const [r, y0, y1] of tiers) {
-      for (let yy = by + 1 + y0; yy <= by + 1 + y1; yy++) {
-        for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
-          const edge = Math.abs(dx) === r || Math.abs(dz) === r;
-          if (edge) set(cx + dx, yy, cz + dz, B.NETHERRACK);
-          else set(cx + dx, yy, cz + dz, 0);
-        }
-      }
-      // ceiling ring of this tier
-      const yy = by + 1 + y1 + 1;
-      for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) if (Math.abs(dx) >= r - 1 || Math.abs(dz) >= r - 1) set(cx + dx, yy, cz + dz, B.NETHERRACK);
+    const R = REACTOR_050;
+    const target = new Map();
+    const key = (x, y, z) => (x + 64) * 65536 + (y + 64) * 256 + (z + 64);
+    // the original first clears a 25x25 column around the core (keeping the core itself)
+    for (let dx = -R.clearRadius; dx <= R.clearRadius; dx++) for (let dz = -R.clearRadius; dz <= R.clearRadius; dz++) for (let dy = R.clearY0; dy <= R.clearY1; dy++) {
+      if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && dy <= 2) continue;
+      target.set(key(dx, dy, dz), [dx, dy, dz, 0]);
     }
-    // cap
-    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) set(cx + dx, by + 33, cz + dz, B.NETHERRACK);
-    // put the core platform back (it lives inside the spire)
+    DOME_050.forEach((layer, li) => {
+      const dy = li - 3;
+      layer.split('|').forEach((row, ri) => {
+        for (let ci = 0; ci < row.length; ci++) {
+          const id = this.domeCell(row[ci]);
+          if (id < 0) continue;
+          const dx = ci - 8, dz = ri - 8;
+          target.set(key(dx, dy, dz), [dx, dy, dz, id]);
+        }
+      });
+    });
+    const w = this.world, changes = [];
+    for (const [dx, dy, dz, id] of target.values()) {
+      const x = cx + dx, y = cy + dy, z = cz + dz;
+      if (!w.inBounds(x, y, z)) continue;
+      if (w.getBlock(x, y, z) !== id) changes.push([x, y, z, id, 0]);
+    }
+    this.bulkSet(changes);
+    // nothing survives inside the spire
+    for (const e of this.entities.values()) if (e.type === 'item' && Math.abs(e.x - cx) < 12 && Math.abs(e.z - cz) < 12 && e.y > cy - 3 && e.y < cy + 40) e.removed = true;
+  }
+  bulkSet(changes) {
+    this.world.bulkSet(changes);
+    for (const h of this.hooks.bulk || []) h(changes);
+  }
+  reactorLayer(r, ly, from, to) {
+    const w = this.world;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const id = w.getBlock(r.x + i, r.y + ly, r.z + j);
+      if (from.includes(id)) w.setBlock(r.x + i, r.y + ly, r.z + j, to);
+    }
+  }
+  reactorItemsForLevel(level) {
+    if (level === 0) return 3;
+    if (level <= 3) return 5;
+    if (level <= 7) return Math.max(0, ((this.rand() * 14) | 0) - 4);
+    return Math.max(0, ((this.rand() * 9) | 0) - 2);
+  }
+  reactorEnemiesForLevel(level) {
+    if (level === 0) return 3;
+    if (level <= 3) return 2;
+    if (level <= 5) return this.rand() < 0.5 ? 1 : 0;
+    return 0;
+  }
+  reactorSpawnPos(r) {
+    const ang = this.rand() * Math.PI * 2, d = 2.5 + this.rand() * 4.5;
+    return [r.x + 0.5 + Math.cos(ang) * d, r.y - 1, r.z + 0.5 + Math.sin(ang) * d];
+  }
+  reactorPigmen(r) {
+    return [...this.entities.values()].filter((e) => e.type === 'pigzombie' && !e.removed && e.deathTime === 0 && Math.abs(e.x - r.x) < 12 && Math.abs(e.z - r.z) < 12);
+  }
+  reactorSpawnPigmen(r, max, n) {
+    const have = this.reactorPigmen(r).length;
+    for (let i = 0; i < Math.min(n, max - have); i++) {
+      const [x, y, z] = this.reactorSpawnPos(r);
+      this.addEntity(new PigZombie(x, y, z));
+    }
   }
   tickReactor() {
     const r = this.reactor;
     if (!r) return;
+    const w = this.world, R = REACTOR_050;
+    if (w.getBlock(r.x, r.y, r.z) !== B.REACTOR) { this.reactor = null; this.setNightMode(false); return; }
     r.t++;
+    if (r.t % 20 !== 0) return;
+    const sec = r.t / 20;
+    if (r.running) {
+      if (R.glow[sec] !== undefined) this.reactorLayer(r, R.glow[sec], [B.GOLD_BLOCK, B.COBBLE], B.GLOWING_OBSIDIAN);
+      if (R.toObsidian[sec] !== undefined) this.reactorLayer(r, R.toObsidian[sec] - 1, [B.GLOWING_OBSIDIAN], B.OBSIDIAN);
+      if (R.levelSeconds.includes(sec)) {
+        r.level++;
+        const n = this.reactorItemsForLevel(r.level);
+        for (let i = 0; i < n; i++) {
+          let id, c = 1;
+          if (this.rand() < 6 / 7) [id, c] = R.commonLoot[(this.rand() * R.commonLoot.length) | 0];
+          else id = R.rareLoot[(this.rand() * R.rareLoot.length) | 0];
+          const [x, y, z] = this.reactorSpawnPos(r);
+          this.spawnItem(x, y + 0.5, z, id, c, 0);
+        }
+        this.reactorSpawnPigmen(r, 3, this.reactorEnemiesForLevel(r.level));
+        this.fx({ k: 'snd', s: 'reactor', x: r.x, y: r.y, z: r.z });
+      }
+      if (r.t > R.endTick) this.finishReactor(r);
+    } else if (r.finished) {
+      // the finished spire keeps two pigmen around while somebody is close, and clears them when everybody leaves
+      if (this.playersNearReactor(r.x, r.y, r.z, R.keepEnemiesRange, 40).length) this.reactorSpawnPigmen(r, 2, 3);
+      else { for (const e of this.reactorPigmen(r)) e.removed = true; }
+    }
+  }
+  finishReactor(r) {
     const w = this.world;
-    if (w.getBlock(r.x, r.y, r.z) !== B.REACTOR) { this.reactor = null; return; }
-    // waves of loot & pigmen during the first ~40 seconds
-    if (r.t < 800 && r.t % 40 === 0) {
-      const loot = [
-        [I.GLOWSTONE_DUST, 3], [I.GLOWSTONE_DUST, 3], [B.CACTUS, 1], [I.SUGARCANE, 2], [I.PUMPKIN_SEEDS, 2], [I.MELON_SEEDS, 2],
-        [B.BROWN_MUSHROOM, 1], [B.RED_MUSHROOM, 1], [I.BOW, 1], [I.ARROW, 4], [I.FEATHER, 3], [I.BONE, 2], [I.BED, 1],
-        [I.DOOR, 1], [I.PAINTING, 1], [I.BOOK, 1], [I.BOWL, 2], [I.MELON_SLICE, 2], [B.GLOWSTONE, 1]
-      ];
-      const n = 2 + ((this.rand() * 3) | 0);
-      for (let i = 0; i < n; i++) {
-        const [id, c] = loot[(this.rand() * loot.length) | 0];
-        const ang = this.rand() * Math.PI * 2, d = 2 + this.rand() * 5;
-        const e = this.spawnItem(r.x + 0.5 + Math.cos(ang) * d, r.y + 0.5, r.z + 0.5 + Math.sin(ang) * d, id, c, 0);
+    r.running = false; r.finished = true;
+    w.setMeta(r.x, r.y, r.z, 2);
+    this.setNightMode(false);
+    for (let ly = -1; ly <= 1; ly++) this.reactorLayer(r, ly, [B.GLOWING_OBSIDIAN], B.OBSIDIAN);
+    // the spire crumbles the way the original does
+    const changes = [];
+    DOME_050.forEach((layer, li) => layer.split('|').forEach((row, ri) => {
+      for (let ci = 0; ci < row.length; ci++) {
+        if (row[ci] !== 'x') continue;
+        const x = r.x + ci - 8, y = r.y + li - 3, z = r.z + ri - 8;
+        if (w.getBlock(x, y, z) === B.OBSIDIAN) changes.push([x, y, z, 0, 0]);
       }
-      if (r.t % 120 === 0 && r.t > 100) {
-        const ang = this.rand() * Math.PI * 2, d = 3 + this.rand() * 4;
-        const x = r.x + 0.5 + Math.cos(ang) * d, z = r.z + 0.5 + Math.sin(ang) * d;
-        if (!SOLID[w.getBlock(Math.floor(x), r.y - 1, Math.floor(z))]) this.addEntity(new PigZombie(x, r.y - 1, z));
-      }
-      this.fx({ k: 'snd', s: 'reactor', x: r.x, y: r.y, z: r.z });
-    }
-    if (r.t === 900) {
-      // power down
-      w.setMeta(r.x, r.y, r.z, 2);
-      for (let l = -1; l <= 1; l++) for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
-        if (w.getBlock(r.x + i, r.y + l, r.z + j) === B.GLOWING_OBSIDIAN) this.setBlock(r.x + i, r.y + l, r.z + j, B.OBSIDIAN);
-      }
-      // the spire decays: punch random holes in the netherrack walls
-      for (let n = 0; n < 220; n++) {
-        const dx = ((this.rand() * 17) | 0) - 8, dz = ((this.rand() * 17) | 0) - 8, dy = ((this.rand() * 32) | 0) - 1;
-        const x = r.x + dx, y = r.y + dy, z = r.z + dz;
-        if (w.getBlock(x, y, z) === B.NETHERRACK && y > r.y - 2) this.setBlock(x, y, z, 0);
-      }
-      this.broadcastMsg('The nether reactor has gone quiet');
-      this.reactor = null;
-      this.world.reactorState = null;
-    }
+    }));
+    this.bulkSet(changes);
   }
 
   // ------------------------------------------------------------------ ray casting
@@ -1345,7 +1396,7 @@ export class Game {
   updateSkyDarken() {
     const st = this.world.time % DAY;
     const ang = (st / DAY - 0.25) * Math.PI * 2;
-    const day = Math.max(0, Math.min(1, Math.cos(ang) * 2 + 0.5));
+    const day = this.world.nightMode ? 0 : Math.max(0, Math.min(1, Math.cos(ang) * 2 + 0.5));
     this.world.skyDarken = Math.round((1 - day) * 11);
   }
 
@@ -1380,6 +1431,7 @@ export class Game {
       this.addEntity(e);
     }
     this.reactor = s.reactor || null;
+    if (this.reactor && this.reactor.running) this.world.nightMode = true;
   }
 }
 
